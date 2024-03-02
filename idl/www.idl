@@ -1,0 +1,36 @@
+/* This file is part of the the dci project. Copyright (C) 2013-2023 vopl, shtoba.
+   This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public
+   License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+   This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+   You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
+
+require "tls/client/channel.idl"
+require "tls/server/channel.idl"
+
+require "http/client/channel.idl"
+require "http/server/channel.idl"
+
+require "http2/client/channel.idl"
+require "http2/server/channel.idl"
+
+require "ws/channel.idl"
+
+require "net/stream/channel.idl"
+
+scope www
+{
+    interface Factory
+    {
+        in tlsClientChannel(net::stream::Channel) -> tls::client::Channel;
+        in tlsServerChannel(net::stream::Channel) -> tls::server::Channel;
+
+        in httpClientChannel(net::stream::Channel) -> http::client::Channel;
+        in httpServerChannel(net::stream::Channel) -> http::server::Channel;
+
+        in http2ClientChannel(net::stream::Channel) -> http2::client::Channel;
+        in http2ServerChannel(net::stream::Channel) -> http2::server::Channel;
+
+        in wsChannel(net::stream::Channel) -> ws::Channel;
+    }
+}
