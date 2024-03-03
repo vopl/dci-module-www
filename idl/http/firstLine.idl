@@ -9,13 +9,24 @@ scope www::http::firstLine
 {
     enum Method
     {
+        null,
+        OPTIONS,
         GET,
+        HEAD,
         POST,
-        // TODO
+        PUT,
+        PATCH,
+        DELETE,
+        TRACE,
+        CONNECT,
     }
+
+    alias StatusCode = uint8;
 
     enum Version
     {
+        null,
+        HTTP_0_9,
         HTTP_1_0,
         HTTP_1_1,
     }

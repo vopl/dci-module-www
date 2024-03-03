@@ -12,10 +12,8 @@ scope www::http
 {
     interface Message
     {
-        in headers(list<Header>);
-        in headersDone();
-        in data(bytes);
-        in dataDone();
+        in headers(list<Header>, bool done);
+        in data(bytes, bool done);
     }
 
     scope message
@@ -27,7 +25,7 @@ scope www::http
 
         interface S2C : Message
         {
-            in firstLine(firstLine::Version, string statusCode, string statusText);
+            in firstLine(firstLine::Version, firstLine::StatusCode, string statusText);
         }
     }
 }

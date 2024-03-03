@@ -38,10 +38,12 @@ dciTest(${UNAME} mstart
         ${TST}
     LINK
         host-lib
+        bytes
         sbs
         exception
         mm
         cmt
+        poll
         idl
     DEPENDS
         ${UNAME}

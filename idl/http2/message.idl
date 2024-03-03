@@ -11,9 +11,7 @@ scope www::http2
 {
     interface Message
     {
-        in headers(list<Header>);
-        in headersDone();
-        in data(bytes);
-        in dataDone();
+        in headers(list<Header>, bool done);
+        in data(bytes, bool done);
     }
 }

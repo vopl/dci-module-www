@@ -13,13 +13,12 @@ scope www::http2
     {
         enum KeyRecognized
         {
+            null,
+            method,
             scheme,
             authority,
-            protocol,
-            method,
             path,
             status,
-            //...
         }
         alias KeyAny = string;
         alias Key = variant<KeyRecognized, http::header::KeyRecognized, KeyAny>;
