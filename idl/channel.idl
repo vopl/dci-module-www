@@ -11,6 +11,6 @@ scope www
     {
         in close();
         out closed();
-        out fail(exception);
+        out failed(exception);
     }
 }

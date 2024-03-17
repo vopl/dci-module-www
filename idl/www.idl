@@ -10,6 +10,7 @@ require "tls/server/channel.idl"
 
 require "http/client/channel.idl"
 require "http/server/channel.idl"
+require "http/error.idl"
 
 require "http2/client/channel.idl"
 require "http2/server/channel.idl"

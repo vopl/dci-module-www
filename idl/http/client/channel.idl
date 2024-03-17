@@ -13,8 +13,8 @@ scope www::http::client
 {
     interface Channel : www::Channel
     {
-        in upgradeHttp2(www::Channel http2ClientChannel) -> bool;
-        in upgradeWs(www::Channel wsChannel) -> bool;
-        in io(Request, Response);
+        in upgradeHttp2(www::Channel::Opposite http2ClientChannel) -> bool;
+        in upgradeWs(www::Channel::Opposite wsChannel) -> bool;
+        in io(Request::Opposite, Response::Opposite);
     }
 }

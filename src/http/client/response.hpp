@@ -9,20 +9,27 @@
 
 #include "pch.hpp"
 #include "io/plexus.hpp"
-#include "response.hpp"
-#include "request.hpp"
+#include "io/inputBase.hpp"
 
 namespace dci::module::www::http::client
 {
-    class Channel
-        : public api::http::client::Channel<>::Opposite
-        , public host::module::ServiceBase<Channel>
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    class Request;
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    class Response
+        : public io::InputBase<io::Plexus<Response, Request>, Response>
     {
+        using Base = io::InputBase<io::Plexus<Response, Request>, Response>;
     public:
-        Channel(idl::net::stream::Channel<> netStreamChannel);
-        ~Channel();
+        Response(Support* support, api::http::client::Response<>::Opposite api);
+        ~Response();
+
+        bool /*done*/ onReceived(bytes::Alter data);
+        void onFailed(primitives::ExceptionPtr);
+        void onClosed();
 
     private:
-        io::Plexus<Response, Request> _ioPlexus;
+        api::http::client::Response<>::Opposite _api;
     };
 }

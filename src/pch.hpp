@@ -9,6 +9,7 @@
 #include <dci/host/module/entry.hpp>
 #include <dci/cmt.hpp>
 #include <dci/exception.hpp>
+#include <bit>
 #include "www.hpp"
 
 namespace dci::module::www

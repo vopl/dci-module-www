@@ -14,6 +14,7 @@ scope www::http
     {
         in headers(list<Header>, bool done);
         in data(bytes, bool done);
+        in done();
     }
 
     scope message

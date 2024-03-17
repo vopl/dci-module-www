@@ -5,32 +5,47 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include "pch.hpp"
-#include "channel.hpp"
+#pragma once
 
-namespace dci::module::www::http::server
+#include "pch.hpp"
+
+namespace dci::module::www::io
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Channel::Channel(idl::net::stream::Channel<> netStreamChannel)
-        : api::http::server::Channel<>::Opposite{idl::interface::Initializer{}}
-        , _netStreamChannel{std::move(netStreamChannel)}
+    template <class Support_, class MDC>
+    class InputBase
     {
-        // in close();
-        methods()->close() += sol() * []()
-        {
-            dbgFatal("not impl");
-        };
+    public:
+        using Support = Support_;
 
-        // out closed();
-        // out failed(exception);
-        // out upgradeHttp2(www::Channel http2ServerChannel) -> bool;
-        // out upgradeWs(www::Channel wsChannel) -> bool;
-        // out io(Request, Response);
+    protected:
+        InputBase(Support* support);
+        ~InputBase();
+
+    public:
+        bool /*done*/ onReceived(bytes::Alter data) = delete;
+        void onFailed(primitives::ExceptionPtr) = delete;
+        void onClosed() = delete;
+
+    protected:
+        Support* _support;
+    };
+}
+
+namespace dci::module::www::io
+{
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    template <class Support_, class MDC>
+    InputBase<Support_, MDC>::InputBase(Support* support)
+        : _support{support}
+    {
+        _support->reg(static_cast<MDC*>(this));
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Channel::~Channel()
+    template <class Support_, class MDC>
+    InputBase<Support_, MDC>::~InputBase()
     {
-        sol().flush();
+        _support->unreg(static_cast<MDC*>(this));
     }
 }

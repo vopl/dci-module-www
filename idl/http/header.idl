@@ -174,7 +174,6 @@ scope www::http
             Overwrite,
             P3P,
             PEP,
-            Pep_Info,
             PEP_Info,
             Permissions_Policy,
             PICS_Label,

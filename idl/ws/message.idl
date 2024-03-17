@@ -9,7 +9,6 @@ scope www::ws
 {
     interface Message
     {
-        in data(bytes);
-        in dataDone();
+        in data(bytes, bool done);
     }
 }

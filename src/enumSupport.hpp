@@ -6,31 +6,36 @@
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
 #include "pch.hpp"
-#include "channel.hpp"
 
-namespace dci::module::www::http::server
+namespace dci::module::www::enumSupport
 {
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Channel::Channel(idl::net::stream::Channel<> netStreamChannel)
-        : api::http::server::Channel<>::Opposite{idl::interface::Initializer{}}
-        , _netStreamChannel{std::move(netStreamChannel)}
-    {
-        // in close();
-        methods()->close() += sol() * []()
-        {
-            dbgFatal("not impl");
-        };
+    template <class E> std::optional<std::string_view> toString(E e);
+    template <class E> std::optional<E> toEnum(std::string_view s);
 
-        // out closed();
-        // out failed(exception);
-        // out upgradeHttp2(www::Channel http2ServerChannel) -> bool;
-        // out upgradeWs(www::Channel wsChannel) -> bool;
-        // out io(Request, Response);
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    template <int size, bool lowerCase = false>
+    constexpr auto asKey(const char* str)
+    {
+        using Uint = dci::utils::integer::uintCover<size * CHAR_BIT>;
+        char arr[sizeof(Uint)]{};
+        for(std::size_t i{}; i<size; ++i)
+        {
+            char c = str[i];
+            if constexpr(lowerCase)
+            {
+                if('A' <= c && c <= 'Z')
+                    c = c - 'A' + 'a';
+            }
+            arr[i] = c;
+        }
+
+        return std::bit_cast<Uint>(arr);
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Channel::~Channel()
+    template <int size, bool lowerCase>
+    constexpr auto asKey(const char (&str)[size])
     {
-        sol().flush();
+        return asKey<size-1, lowerCase>(static_cast<const char*>(str));
     }
 }

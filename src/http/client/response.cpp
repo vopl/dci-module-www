@@ -6,31 +6,38 @@
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
 #include "pch.hpp"
-#include "channel.hpp"
+#include "response.hpp"
 
-namespace dci::module::www::http::server
+namespace dci::module::www::http::client
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Channel::Channel(idl::net::stream::Channel<> netStreamChannel)
-        : api::http::server::Channel<>::Opposite{idl::interface::Initializer{}}
-        , _netStreamChannel{std::move(netStreamChannel)}
+    Response::Response(Support* support, api::http::client::Response<>::Opposite api)
+        : Base{support}
+        , _api{std::move(api)}
     {
-        // in close();
-        methods()->close() += sol() * []()
-        {
-            dbgFatal("not impl");
-        };
-
-        // out closed();
-        // out failed(exception);
-        // out upgradeHttp2(www::Channel http2ServerChannel) -> bool;
-        // out upgradeWs(www::Channel wsChannel) -> bool;
-        // out io(Request, Response);
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Channel::~Channel()
+    Response::~Response()
     {
-        sol().flush();
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    bool /*done*/ Response::onReceived(bytes::Alter data)
+    {
+        dbgFatal("not impl");
+        _api->data(Bytes{}, true);
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    void Response::onFailed(primitives::ExceptionPtr)
+    {
+        dbgFatal("not impl");
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    void Response::onClosed()
+    {
+        dbgFatal("not impl");
     }
 }

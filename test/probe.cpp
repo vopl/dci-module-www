@@ -40,7 +40,7 @@ TEST(module_www, probe)
 
     www::http::client::Request<> request{idl::interface::Initializer{}};
     www::http::client::Response<> response{idl::interface::Initializer{}};
-    httpClientChannel->io(request, response);
+    httpClientChannel->io(request.opposite(), response.opposite());
 
     cmt::Event firstLineEvt;
     int firstLineCounter = 0;
@@ -114,6 +114,14 @@ TEST(module_www, probe)
         }
     };
 
+    cmt::Event doneEvt;
+    std::size_t doneCounter = 0;
+    response->done() += sol * [&]()
+    {
+        ++doneCounter;
+        doneEvt.raise();
+    };
+
     request->firstLine(www::http::firstLine::Method::GET, "/", www::http::firstLine::Version::HTTP_1_1);
     request->headers(
                 primitives::List<www::http::Header> {
@@ -121,19 +129,12 @@ TEST(module_www, probe)
                     {"x-my-header", "x-my-value"},
                 }, true);
     request->data("xyz", true);
+    request->done();
 
-    poll::WaitableTimer<cmt::Event> tmr{std::chrono::seconds{1}};
-    tmr.start();
-
-    //cmt::wait(tmr || (firstLineEvt && headersEvt && dataEvt));
-    while(!tmr.raisableAndWaitable().isRaised())
-    {
-        if(!firstLineEvt.isRaised()) cmt::waitAny(tmr, firstLineEvt);
-        if(!headersEvt.isRaised()) cmt::waitAny(tmr, headersEvt);
-        if(!dataEvt.isRaised()) cmt::waitAny(tmr, dataEvt);
-    }
+    cmt::wait(poll::timeout(std::chrono::seconds{1}) || (firstLineEvt && headersEvt && dataEvt && doneEvt));
 
     EXPECT_EQ(1, firstLineCounter);
     EXPECT_EQ(2, headersCounter);
     EXPECT_EQ(3, dataCounter);
+    EXPECT_EQ(1, doneCounter);
 }
