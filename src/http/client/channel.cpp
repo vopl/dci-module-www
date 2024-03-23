@@ -50,7 +50,7 @@ namespace dci::module::www::http::client
         // in io(Request::Opposite, Response::Opposite);
         methods()->io() += sol() * [&](api::http::client::Request<>::Opposite request, api::http::client::Response<>::Opposite response)
         {
-            _ioPlexus.emplace(std::tuple{std::move(response)}, std::tuple(std::move(request)));
+            _ioPlexus.emplace(std::tuple{std::move(response)}, std::tuple{std::move(request)});
         };
     }
 

@@ -12,15 +12,19 @@
 namespace dci::module::www::io
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <class Support_, class MDC>
+    template <class Support_, class Impl, bool serverMode>
     class InputBase
     {
     public:
         using Support = Support_;
 
-    protected:
-        InputBase(Support* support);
+    public:
+        InputBase() requires (serverMode);
+        InputBase(Support* support) requires (!serverMode);
         ~InputBase();
+
+    public:
+        void init(Support* support) requires (serverMode);
 
     public:
         bool /*done*/ onReceived(bytes::Alter data) = delete;
@@ -28,24 +32,35 @@ namespace dci::module::www::io
         void onClosed() = delete;
 
     protected:
-        Support* _support;
+        Support* _support{};
     };
 }
 
 namespace dci::module::www::io
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <class Support_, class MDC>
-    InputBase<Support_, MDC>::InputBase(Support* support)
-        : _support{support}
+    template <class Support_, class Impl, bool serverMode>
+    InputBase<Support_, Impl, serverMode>::InputBase() requires (serverMode)
     {
-        _support->reg(static_cast<MDC*>(this));
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <class Support_, class MDC>
-    InputBase<Support_, MDC>::~InputBase()
+    template <class Support_, class Impl, bool serverMode>
+    InputBase<Support_, Impl, serverMode>::InputBase(Support* support) requires (!serverMode)
+        : _support{support}
     {
-        _support->unreg(static_cast<MDC*>(this));
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    template <class Support_, class Impl, bool serverMode>
+    InputBase<Support_, Impl, serverMode>::~InputBase()
+    {
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    template <class Support_, class Impl, bool serverMode>
+    void InputBase<Support_, Impl, serverMode>::init(Support* support) requires (serverMode)
+    {
+        _support = support;
     }
 }

@@ -9,24 +9,27 @@
 
 #include "pch.hpp"
 #include "io/plexus.hpp"
-#include "io/outputBase.hpp"
+#include "io/inputBase.hpp"
 
-namespace dci::module::www::http::client
+namespace dci::module::www::http::server
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     class Response;
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     class Request
-        : public io::OutputBase<io::Plexus<Response, Request, false>, Request>
+        : public io::InputBase<io::Plexus<Request, Response, true>, Request, true>
     {
-        using Base = io::OutputBase<io::Plexus<Response, Request, false>, Request>;
+        using Base = io::InputBase<io::Plexus<Request, Response, true>, Request, true>;
     public:
-        Request(Support* support, api::http::client::Request<>::Opposite api);
+        using Base::Base;
         ~Request();
 
+        bool /*done*/ onReceived(bytes::Alter data);
+        void onFailed(primitives::ExceptionPtr);
+        void onClosed();
+
     private:
-        api::http::client::Request<>::Opposite  _api;
-        sbs::Owner                              _sol;
+        api::http::server::Request<>::Opposite _api;
     };
 }

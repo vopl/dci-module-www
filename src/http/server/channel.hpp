@@ -8,6 +8,9 @@
 #pragma once
 
 #include "pch.hpp"
+#include "io/plexus.hpp"
+#include "response.hpp"
+#include "request.hpp"
 
 namespace dci::module::www::http::server
 {
@@ -20,6 +23,6 @@ namespace dci::module::www::http::server
         ~Channel();
 
     private:
-        idl::net::stream::Channel<> _netStreamChannel;
+        io::Plexus<Request, Response, true> _ioPlexus;
     };
 }

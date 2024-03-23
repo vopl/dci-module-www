@@ -7,6 +7,7 @@
 
 #include "pch.hpp"
 #include "request.hpp"
+#include "response.hpp"
 #include "../../enumSupport.hpp"
 
 namespace dci::module::www::http::client
@@ -24,8 +25,7 @@ namespace dci::module::www::http::client
             std::optional<std::string_view> optStr = enumSupport::toString(method);
             if(!optStr)
             {
-                _support->_failed.in(exception::buildInstance<api::http::error::UnknownRequestMethod>());
-                _support->close();
+                _support->close(exception::buildInstance<api::http::error::UnknownRequestMethod>());
                 return;
             }
             out.write(optStr->data(), optStr->size());
@@ -37,8 +37,7 @@ namespace dci::module::www::http::client
             optStr = enumSupport::toString(version);
             if(!optStr)
             {
-                _support->_failed.in(exception::buildInstance<api::http::error::UnknownRequestVersion>());
-                _support->close();
+                _support->close(exception::buildInstance<api::http::error::UnknownRequestVersion>());
                 return;
             }
             out.write(optStr->data(), optStr->size());
@@ -60,8 +59,7 @@ namespace dci::module::www::http::client
                             std::optional<std::string_view> optStr = enumSupport::toString(value);
                             if(!optStr)
                             {
-                                _support->_failed.in(exception::buildInstance<api::http::error::UnknownRequestVersion>());
-                                _support->close();
+                                _support->close(exception::buildInstance<api::http::error::UnknownRequestVersion>());
                                 return;
                             }
                             out.write(optStr->data(), optStr->size());
@@ -93,7 +91,7 @@ namespace dci::module::www::http::client
         _api.methods()->done() += _sol * [this]()
         {
             flushBuffer();
-            _support->done(this);
+            this->apiDone();
         };
     }
 
@@ -101,19 +99,5 @@ namespace dci::module::www::http::client
     Request::~Request()
     {
         _sol.flush();
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    void Request::allowWrite()
-    {
-        _writeAllowed = true;
-        flushBuffer();
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    void Request::flushBuffer()
-    {
-        if(_writeAllowed && !_buffer.empty())
-            _support->write(std::move(_buffer));
     }
 }

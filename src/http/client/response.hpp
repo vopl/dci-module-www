@@ -18,9 +18,9 @@ namespace dci::module::www::http::client
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     class Response
-        : public io::InputBase<io::Plexus<Response, Request>, Response>
+        : public io::InputBase<io::Plexus<Response, Request, false>, Response, false>
     {
-        using Base = io::InputBase<io::Plexus<Response, Request>, Response>;
+        using Base = io::InputBase<io::Plexus<Response, Request, false>, Response, false>;
     public:
         Response(Support* support, api::http::client::Response<>::Opposite api);
         ~Response();

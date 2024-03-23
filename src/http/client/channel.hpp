@@ -23,6 +23,6 @@ namespace dci::module::www::http::client
         ~Channel();
 
     private:
-        io::Plexus<Response, Request> _ioPlexus;
+        io::Plexus<Response, Request, false> _ioPlexus;
     };
 }

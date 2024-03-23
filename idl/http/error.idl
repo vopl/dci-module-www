@@ -10,6 +10,8 @@ scope www::http
     exception Error {}
     scope error
     {
+        exception MalformedInputReceived : Error {}
+        exception DownstreamFailed : Error {}
         exception UnknownRequestMethod : Error {}
         exception UnknownRequestVersion : Error {}
     }

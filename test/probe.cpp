@@ -9,6 +9,7 @@
 #include <dci/host.hpp>
 #include <dci/poll.hpp>
 #include <dci/cmt.hpp>
+#include <dci/utils/s2f.hpp>
 #include "www.hpp"
 
 using namespace dci;
@@ -17,124 +18,94 @@ using namespace dci::cmt;
 using namespace dci::idl;
 
 /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-TEST(module_www, probe)
+std::tuple<
+    www::http::client::Channel<>,
+    www::http::server::Channel<>
+> connectedPair()
 {
     Manager* manager = testManager();
-    net::Host<> netHost = manager->createService<net::Host<>>().value();
-    net::stream::Server<> netServer = netHost->streamServer().value();
-    net::stream::Client<> netClient = netHost->streamClient().value();
+    net::Host<> netHost = *manager->createService<net::Host<>>();
+    www::Factory<> wwwFactory = *manager->createService<www::Factory<>>();
 
-    netServer->listen(net::Ip4Endpoint{{127,0,0,19}, 0}).value();
+    net::stream::Server<> netServer = *netHost->streamServer();
+    *netServer->listen(net::Ip4Endpoint{{127,0,0,19}, 0});
+    utils::S2f accepted = netServer->accepted();
 
-    www::Factory<> wwwFactory = manager->createService<www::Factory<>>().value();
+    auto connected = *netHost->streamClient()->connect(*netServer->localEndpoint());
 
-    dci::sbs::Owner sol;
-    www::http::server::Channel<> httpServerChannel;
-    netServer->accepted().connect(sol, [&](net::stream::Channel<> netStreamChannel)
+    return
     {
-        httpServerChannel = wwwFactory->httpServerChannel(std::move(netStreamChannel)).value();
-    });
-
-    idl::net::stream::Channel<> netStreamChannel = netClient->connect(netServer->localEndpoint().value()).value();
-    www::http::client::Channel<> httpClientChannel = wwwFactory->httpClientChannel(std::move(netStreamChannel)).value();
-
-    www::http::client::Request<> request{idl::interface::Initializer{}};
-    www::http::client::Response<> response{idl::interface::Initializer{}};
-    httpClientChannel->io(request.opposite(), response.opposite());
-
-    cmt::Event firstLineEvt;
-    int firstLineCounter = 0;
-    response->firstLine() += sol * [&](www::http::firstLine::Version version, primitives::uint8 statusCode, primitives::String statusText)
-    {
-        EXPECT_EQ(version, www::http::firstLine::Version::HTTP_1_1);
-        EXPECT_EQ(statusCode, 200);
-        EXPECT_EQ(statusText, "OK");
-        ++firstLineCounter;
-        firstLineEvt.raise();
+        *wwwFactory->httpClientChannel(connected),
+        *wwwFactory->httpServerChannel(*accepted)
     };
+}
 
-    cmt::Event headersEvt;
-    std::size_t headersCounter = 0;
-    response->headers() += sol * [&](primitives::List<www::http::Header> headers, bool done)
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, probe)
+{
+    auto [cln, srv] = connectedPair();
+
+    www::http::client::Request<> clnReq;
+    www::http::client::Response<> clnResp;
+    cln->io(clnReq.init2(), clnResp.init2());
+
+    utils::S2f srvIo = srv->io();
+
+    // client request
     {
-        std::size_t localIdx{};
-        while(headersCounter < headers.size())
+        clnReq->firstLine(www::http::firstLine::Method::GET, "/", www::http::firstLine::Version::HTTP_1_1);
+        clnReq->headers(
+                    primitives::List<www::http::Header> {
+                        {www::http::header::KeyRecognized::Host, "localhost"},
+                        {"x-my-header", "x-my-value"},
+                    }, true);
+        clnReq->data("xyz", true);
+        clnReq->done();
+    }
+
+    // server request
+    {
+        auto [srvReq, srvResp] = *srvIo;
+
         {
-            switch(headersCounter)
-            {
-            case 0:
-                EXPECT_EQ(headers[localIdx].key, www::http::header::KeyRecognized::Host);
-                EXPECT_EQ(headers[localIdx].value, "localhost");
-                break;
-            case 1:
-                EXPECT_EQ(headers[localIdx].key, "x-my-header");
-                EXPECT_EQ(headers[localIdx].value, "x-my-value");
-                break;
-            default:
-                ADD_FAILURE();
-            }
-
-            ++localIdx;
-            ++headersCounter;
-            EXPECT_EQ(done, headersCounter == 2);
-            if(done)
-                headersEvt.raise();
+            auto [method, path, version] = *utils::S2f{srvReq->firstLine()};
+            EXPECT_EQ(method, www::http::firstLine::Method::GET);
+            EXPECT_EQ(path, "/");
+            EXPECT_EQ(version, www::http::firstLine::Version::HTTP_1_1);
         }
-    };
 
-    cmt::Event dataEvt;
-    std::size_t dataCounter = 0;
-    response->data() += sol * [&](Bytes data, bool done)
-    {
-        primitives::String dataStr = data.toString();
-
-        std::size_t localIdx{};
-        while(dataCounter < dataStr.size())
         {
-            switch(dataCounter)
+            primitives::List<www::http::Header> headers;
+            for(;;)
             {
-            case 0:
-                EXPECT_EQ(dataStr[localIdx], 'x');
-                break;
-            case 1:
-                EXPECT_EQ(dataStr[localIdx], 'y');
-                break;
-            case 2:
-                EXPECT_EQ(dataStr[localIdx], 'z');
-                break;
-            default:
-                ADD_FAILURE();
-            }
+                auto [h, done] = *utils::S2f{srvReq->headers()};
+                headers.insert(headers.end(), h.begin(), h.end());
+                if(done)
+                    break;
+            };
 
-            ++localIdx;
-            ++dataCounter;
-            EXPECT_EQ(done, dataCounter == 3);
-            if(done)
-                dataEvt.raise();
+            ASSERT_EQ(2, headers.size());
+
+            EXPECT_EQ(headers[0].key, www::http::header::KeyRecognized::Host);
+            EXPECT_EQ(headers[0].value, "localhost");
+
+            EXPECT_EQ(headers[1].key, "x-my-header");
+            EXPECT_EQ(headers[1].value, "x-my-value");
         }
-    };
 
-    cmt::Event doneEvt;
-    std::size_t doneCounter = 0;
-    response->done() += sol * [&]()
-    {
-        ++doneCounter;
-        doneEvt.raise();
-    };
+        {
+            Bytes data;
+            for(;;)
+            {
+                auto [d, done] = *utils::S2f{srvReq->data()};
+                d.begin().removeTo(data);
+                if(done)
+                    break;
+            };
 
-    request->firstLine(www::http::firstLine::Method::GET, "/", www::http::firstLine::Version::HTTP_1_1);
-    request->headers(
-                primitives::List<www::http::Header> {
-                    {www::http::header::KeyRecognized::Host, "localhost"},
-                    {"x-my-header", "x-my-value"},
-                }, true);
-    request->data("xyz", true);
-    request->done();
+            EXPECT_EQ(data, Bytes{"xyz"});
+        }
 
-    cmt::wait(poll::timeout(std::chrono::seconds{1}) || (firstLineEvt && headersEvt && dataEvt && doneEvt));
-
-    EXPECT_EQ(1, firstLineCounter);
-    EXPECT_EQ(2, headersCounter);
-    EXPECT_EQ(3, dataCounter);
-    EXPECT_EQ(1, doneCounter);
+        utils::S2f{srvReq->done()}.wait();
+    }
 }

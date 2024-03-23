@@ -13,19 +13,31 @@ namespace dci::module::www::http::server
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     Channel::Channel(idl::net::stream::Channel<> netStreamChannel)
         : api::http::server::Channel<>::Opposite{idl::interface::Initializer{}}
-        , _netStreamChannel{std::move(netStreamChannel)}
+        , _ioPlexus{std::move(netStreamChannel)}
     {
         // in close();
-        methods()->close() += sol() * []()
+        methods()->close() += sol() * [&]()
         {
-            dbgFatal("not impl");
+            _ioPlexus.close();
         };
 
         // out closed();
+        _ioPlexus._closed.out() += sol() * [&]()
+        {
+            methods()->closed();
+        };
+
         // out failed(exception);
-        // out upgradeHttp2(www::Channel http2ServerChannel) -> bool;
-        // out upgradeWs(www::Channel wsChannel) -> bool;
-        // out io(Request, Response);
+        _ioPlexus._failed.out() += sol() * [&](primitives::ExceptionPtr err)
+        {
+            methods()->failed(std::move(err));
+        };
+
+        // out upgradeHttp2(www::Channel::Opposite http2ServerChannel) -> bool;
+        // out upgradeWs(www::Channel::Opposite wsChannel) -> bool;
+        // out io(Request::Opposite, Response::Opposite);
+
+        //_ioPlexus.emplace(std::tuple{}, std::tuple{});
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7

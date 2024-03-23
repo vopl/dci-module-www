@@ -5,28 +5,32 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#pragma once
-
 #include "pch.hpp"
-#include "io/plexus.hpp"
-#include "io/outputBase.hpp"
+#include "request.hpp"
 
-namespace dci::module::www::http::client
+namespace dci::module::www::http::server
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    class Response;
+    Request::~Request()
+    {
+    }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    class Request
-        : public io::OutputBase<io::Plexus<Response, Request, false>, Request>
+    bool /*done*/ Request::onReceived(bytes::Alter data)
     {
-        using Base = io::OutputBase<io::Plexus<Response, Request, false>, Request>;
-    public:
-        Request(Support* support, api::http::client::Request<>::Opposite api);
-        ~Request();
+        dbgFatal("not impl");
+        //_api->data(Bytes{}, true);
+    }
 
-    private:
-        api::http::client::Request<>::Opposite  _api;
-        sbs::Owner                              _sol;
-    };
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    void Request::onFailed(primitives::ExceptionPtr)
+    {
+        dbgFatal("not impl");
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    void Request::onClosed()
+    {
+        dbgFatal("not impl");
+    }
 }

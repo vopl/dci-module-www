@@ -21,7 +21,7 @@ scope www::http::firstLine
         CONNECT,
     }
 
-    alias StatusCode = uint8;
+    alias StatusCode = uint16;
 
     enum Version
     {

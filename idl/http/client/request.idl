@@ -9,5 +9,5 @@ require "../message.idl"
 
 scope www::http::client
 {
-    interface Request  : message::C2S {}
+    interface Request : message::C2S {}
 }

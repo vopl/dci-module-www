@@ -11,22 +11,22 @@
 #include "io/plexus.hpp"
 #include "io/outputBase.hpp"
 
-namespace dci::module::www::http::client
+namespace dci::module::www::http::server
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    class Response;
+    class Request;
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    class Request
-        : public io::OutputBase<io::Plexus<Response, Request, false>, Request>
+    class Response
+        : public io::OutputBase<io::Plexus<Request, Response, true>, Response>
     {
-        using Base = io::OutputBase<io::Plexus<Response, Request, false>, Request>;
+        using Base = io::OutputBase<io::Plexus<Request, Response, true>, Response>;
     public:
-        Request(Support* support, api::http::client::Request<>::Opposite api);
-        ~Request();
+        Response(Support* support);
+        ~Response();
 
     private:
-        api::http::client::Request<>::Opposite  _api;
+        api::http::server::Response<>::Opposite _api;
         sbs::Owner                              _sol;
     };
 }
