@@ -10,6 +10,7 @@
 #include "pch.hpp"
 #include "io/plexus.hpp"
 #include "io/inputBase.hpp"
+#include "../inputSlicer.hpp"
 
 namespace dci::module::www::http::server
 {
@@ -18,18 +19,22 @@ namespace dci::module::www::http::server
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     class Request
-        : public io::InputBase<io::Plexus<Request, Response, true>, Request, true>
+        : public io::InputBase<io::Plexus<Request, Response, true>, Request, api::http::server::Request<>::Opposite, true>
+        , private InputSlicer<inputSlicer::Mode::request, Request>
     {
-        using Base = io::InputBase<io::Plexus<Request, Response, true>, Request, true>;
+        using Support = io::Plexus<Request, Response, true>;
+        using Base = io::InputBase<io::Plexus<Request, Response, true>, Request, api::http::server::Request<>::Opposite, true>;
+
     public:
-        using Base::Base;
+        Request();
         ~Request();
 
-        bool /*done*/ onReceived(bytes::Alter data);
-        void onFailed(primitives::ExceptionPtr);
-        void onClosed();
+        bool /*done*/ onReceived(bytes::Alter& data);
 
     private:
-        api::http::server::Request<>::Opposite _api;
+        friend struct InputSlicer<inputSlicer::Mode::request, Request>;
+        inputSlicer::Result sliceDone(const inputSlicer::state::RequestFirstLine& firstLine);
+        inputSlicer::Result sliceDone(const inputSlicer::state::Header& header);
+        inputSlicer::Result sliceDone(const inputSlicer::state::Body& body);
     };
 }

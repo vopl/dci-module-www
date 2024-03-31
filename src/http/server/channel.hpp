@@ -16,13 +16,14 @@ namespace dci::module::www::http::server
 {
     class Channel
         : public api::http::server::Channel<>::Opposite
-        , public host::module::ServiceBase<Channel>
+        , public mm::heap::Allocable<Channel>
+        , public io::Plexus<Request, Response, true>
     {
     public:
         Channel(idl::net::stream::Channel<> netStreamChannel);
         ~Channel();
 
-    private:
-        io::Plexus<Request, Response, true> _ioPlexus;
+    public:
+        void emitIo(api::http::server::Request<> request);
     };
 }

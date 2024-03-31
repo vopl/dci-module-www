@@ -5,15 +5,17 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
+require "../../channel.idl"
 require "request.idl"
 require "response.idl"
-require "../../channel.idl"
 
-scope www::http2::client
+scope www::http::client
 {
-    interface Channel : www::Channel
+    interface Channel
+        : www::Channel
     {
-        in io(Request, Response);
-        out push(Response);
+        in upgradeHttp2(www::Channel::Opposite http2ClientChannel) -> bool;
+        in upgradeWs(www::Channel::Opposite wsChannel) -> bool;
+        in io(Request::Opposite, Response::Opposite);
     }
 }

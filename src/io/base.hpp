@@ -5,16 +5,34 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-require "request.idl"
-require "response.idl"
-require "../../channel.idl"
+#pragma once
 
-scope www::http::client
+#include "pch.hpp"
+
+namespace dci::module::www::io
 {
-    interface Channel : www::Channel
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    template <class Support, class Impl, class Api>
+    class Base
     {
-        in upgradeHttp2(www::Channel::Opposite http2ClientChannel) -> bool;
-        in upgradeWs(www::Channel::Opposite wsChannel) -> bool;
-        in io(Request::Opposite, Response::Opposite);
-    }
+    protected:
+        Base();
+        Base(Support* support, Api&& api);
+        ~Base();
+
+        void setSupport(Support* support);
+        void setApi(Api&& api);
+
+    public:
+        void onFailed(primitives::ExceptionPtr);
+        void onClosed();
+        void closeByApi();
+
+    protected:
+        Support*    _support{};
+        Api         _api;
+        sbs::Owner  _sol;
+    };
 }
+
+#include "base.ipp"

@@ -6,27 +6,38 @@
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
 #include "pch.hpp"
-#include "response.hpp"
-#include "request.hpp"
+#include "state.hpp"
 
-namespace dci::module::www::http::client
+namespace dci::module::www::http::inputSlicer::state
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Response::Response(Support* support, api::http::client::Response<>::Opposite api)
-        : Base{support, std::move(api)}
+    void RequestFirstLine::reset()
     {
+        _method.reset();
+        _uri.reset();
+        _version.reset();
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Response::~Response()
+    void ResponseFirstLine::reset()
     {
-        _sol.flush();
+        _version.reset();
+        _statusCode = {};
+        _statusCodeCharsCount = {};
+        _statusText.reset();
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    bool /*done*/ Response::onReceived(bytes::Alter /*data*/)
+    void Header::reset()
     {
-        dbgFatal("not impl");
-        _api->data(Bytes{}, true);
+        _key.reset();
+        _value.reset();
+        _empty = false;
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    void Body::reset()
+    {
+        _trailersFollows = {};
     }
 }

@@ -5,28 +5,15 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-require "header.idl"
-require "firstLine.idl"
+require "../../unreliable.idl"
+require "../stream.idl"
+require "../message.idl"
 
-scope www::http
+scope www::http2::client
 {
-    interface Message
-    {
-        in headers(list<Header>, bool done);
-        in data(bytes, bool done);
-        in done();
-    }
-
-    scope message
-    {
-        interface C2S : Message
-        {
-            in firstLine(firstLine::Method, string path, firstLine::Version);
-        }
-
-        interface S2C : Message
-        {
-            in firstLine(firstLine::Version, firstLine::StatusCode, string statusText);
-        }
-    }
+    interface Request
+        : Unreliable
+        , Stream
+        , Message
+    {}
 }

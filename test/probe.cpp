@@ -45,14 +45,58 @@ TEST(module_www, probe)
 {
     auto [cln, srv] = connectedPair();
 
-    www::http::client::Request<> clnReq;
-    www::http::client::Response<> clnResp;
-    cln->io(clnReq.init2(), clnResp.init2());
+    sbs::Owner sol;
+    cmt::Event srvFirstLineDone, srvHeadersDone, srvDataDone;
 
-    utils::S2f srvIo = srv->io();
+    primitives::List<www::http::Header> srvHeaders;
+    Bytes srvData;
+
+    // server request
+    srv->io() += sol * [&](www::http::server::Request<> srvReq, www::http::server::Response<> /*srvResp*/)
+    {
+        srvReq->firstLine() += sol * [&](www::http::firstLine::Method method, dci::primitives::String&& path, www::http::firstLine::Version version)
+        {
+            EXPECT_EQ(method, www::http::firstLine::Method::GET);
+            EXPECT_EQ(path, "/");
+            EXPECT_EQ(version, www::http::firstLine::Version::HTTP_1_1);
+            srvFirstLineDone.raise();
+        };
+
+        srvReq->headers() += sol * [&](primitives::List<www::http::Header>&& headers, bool done)
+        {
+            srvHeaders.insert(srvHeaders.end(), headers.begin(), headers.end());
+            if(!done)
+                return;
+
+            ASSERT_EQ(2, srvHeaders.size());
+
+            EXPECT_EQ(srvHeaders[0].key, www::http::header::KeyRecognized::Host);
+            EXPECT_EQ(srvHeaders[0].value, "localhost");
+
+            EXPECT_EQ(srvHeaders[1].key, "x-my-header");
+            EXPECT_EQ(srvHeaders[1].value, "x-my-value");
+
+            srvHeadersDone.raise();
+        };
+
+        srvReq->data() += sol * [&](Bytes&& data, bool done)
+        {
+            srvData.end().write(std::move(data));
+            if(!done)
+                return;
+
+            EXPECT_EQ(data, Bytes{"xyz"});
+            EXPECT_TRUE(done);
+            srvDataDone.raise();
+        };
+    };
 
     // client request
     {
+        www::http::client::Request<> clnReq;
+        www::http::client::Response<> clnResp;
+        cln->io(clnReq.init2(), clnResp.init2());
+
         clnReq->firstLine(www::http::firstLine::Method::GET, "/", www::http::firstLine::Version::HTTP_1_1);
         clnReq->headers(
                     primitives::List<www::http::Header> {
@@ -61,51 +105,9 @@ TEST(module_www, probe)
                     }, true);
         clnReq->data("xyz", true);
         clnReq->done();
-    }
+    };
 
-    // server request
-    {
-        auto [srvReq, srvResp] = *srvIo;
-
-        {
-            auto [method, path, version] = *utils::S2f{srvReq->firstLine()};
-            EXPECT_EQ(method, www::http::firstLine::Method::GET);
-            EXPECT_EQ(path, "/");
-            EXPECT_EQ(version, www::http::firstLine::Version::HTTP_1_1);
-        }
-
-        {
-            primitives::List<www::http::Header> headers;
-            for(;;)
-            {
-                auto [h, done] = *utils::S2f{srvReq->headers()};
-                headers.insert(headers.end(), h.begin(), h.end());
-                if(done)
-                    break;
-            };
-
-            ASSERT_EQ(2, headers.size());
-
-            EXPECT_EQ(headers[0].key, www::http::header::KeyRecognized::Host);
-            EXPECT_EQ(headers[0].value, "localhost");
-
-            EXPECT_EQ(headers[1].key, "x-my-header");
-            EXPECT_EQ(headers[1].value, "x-my-value");
-        }
-
-        {
-            Bytes data;
-            for(;;)
-            {
-                auto [d, done] = *utils::S2f{srvReq->data()};
-                d.begin().removeTo(data);
-                if(done)
-                    break;
-            };
-
-            EXPECT_EQ(data, Bytes{"xyz"});
-        }
-
-        utils::S2f{srvReq->done()}.wait();
-    }
+    auto wres = cmt::wait(poll::timeout(std::chrono::seconds{1}) || (srvFirstLineDone && srvHeadersDone && srvDataDone));
+    EXPECT_EQ(wres.to_string(), "0111");
+    sol.flush();
 }

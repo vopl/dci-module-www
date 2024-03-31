@@ -5,10 +5,17 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-require "../stream.idl"
-require "../message.idl"
+#pragma once
 
-scope www::http2::server
+#include "pch.hpp"
+
+namespace dci::module::www::http::inputSlicer
 {
-    interface Response : Stream, Message {}
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    enum class Result
+    {
+        needMoreInput,
+        malformedInput,
+        done,
+    };
 }

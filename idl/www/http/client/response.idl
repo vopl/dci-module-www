@@ -5,9 +5,13 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
+require "../../unreliable.idl"
 require "../message.idl"
 
 scope www::http::client
 {
-    interface Request : message::C2S {}
+    interface Response
+        : Unreliable
+        , message::S2C::Opposite
+    {}
 }

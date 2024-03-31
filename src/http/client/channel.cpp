@@ -13,50 +13,50 @@ namespace dci::module::www::http::client
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     Channel::Channel(idl::net::stream::Channel<> netStreamChannel)
         : api::http::client::Channel<>::Opposite{idl::interface::Initializer{}}
-        , _ioPlexus{std::move(netStreamChannel)}
+        , io::Plexus<Response, Request, false>{std::move(netStreamChannel)}
     {
         // in close();
-        methods()->close() += sol() * [&]()
+        methods()->close() += _sol * [&]()
         {
-            _ioPlexus.close();
+            io::Plexus<Response, Request, false>::close();
         };
 
         // out closed();
-        _ioPlexus._closed.out() += sol() * [&]()
+        io::Plexus<Response, Request, false>::_closed.out() += _sol * [&]()
         {
             methods()->closed();
         };
 
         // out failed(exception);
-        _ioPlexus._failed.out() += sol() * [&](primitives::ExceptionPtr err)
+        io::Plexus<Response, Request, false>::_failed.out() += _sol * [&](primitives::ExceptionPtr err)
         {
             methods()->failed(std::move(err));
         };
 
         // in upgradeHttp2(www::Channel::Opposite http2ClientChannel) -> bool;
-        methods()->upgradeHttp2() += sol() * [](api::Channel<>::Opposite /*http2ClientChannel*/)
+        methods()->upgradeHttp2() += _sol * [](api::Channel<>::Opposite /*http2ClientChannel*/)
         {
             dbgFatal("not impl");
             return cmt::readyFuture<bool>(exception::buildInstance<idl::interface::exception::MethodNotImplemented>());
         };
 
         // in upgradeWs(www::Channel::Opposite wsChannel) -> bool;
-        methods()->upgradeWs() += sol() * [](api::Channel<>::Opposite /*wsChannel*/)
+        methods()->upgradeWs() += _sol * [](api::Channel<>::Opposite /*wsChannel*/)
         {
             dbgFatal("not impl");
             return cmt::readyFuture<bool>(exception::buildInstance<idl::interface::exception::MethodNotImplemented>());
         };
 
         // in io(Request::Opposite, Response::Opposite);
-        methods()->io() += sol() * [&](api::http::client::Request<>::Opposite request, api::http::client::Response<>::Opposite response)
+        methods()->io() += _sol * [&](api::http::client::Request<>::Opposite request, api::http::client::Response<>::Opposite response)
         {
-            _ioPlexus.emplace(std::tuple{std::move(response)}, std::tuple{std::move(request)});
+            io::Plexus<Response, Request, false>::emplace(std::tuple{std::move(response)}, std::tuple{std::move(request)});
         };
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     Channel::~Channel()
     {
-        sol().flush();
+        _sol.flush();
     }
 }

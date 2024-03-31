@@ -13,9 +13,8 @@
 namespace dci::module::www::http::server
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Response::Response(Support* support)
-        : Base{support}
-        , _api{}
+    Response::Response(Support* support, api::http::server::Response<>::Opposite&& api)
+        : Base{support, std::move(api)}
     {
         // // in firstLine(firstLine::Method, string path, firstLine::Version);
         // _api.methods()->firstLine() += _sol * [this](api::http::firstLine::Version version, api::http::firstLine::StatusCode statusCode, primitives::String&& statusText)

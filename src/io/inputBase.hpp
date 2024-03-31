@@ -8,59 +8,25 @@
 #pragma once
 
 #include "pch.hpp"
+#include "base.hpp"
 
 namespace dci::module::www::io
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <class Support_, class Impl, bool serverMode>
-    class InputBase
+    template <class Support, class Impl, class Api, bool serverMode>
+    class InputBase : public Base<Support, Impl, Api>
     {
     public:
-        using Support = Support_;
-
-    public:
         InputBase() requires (serverMode);
-        InputBase(Support* support) requires (!serverMode);
+        InputBase(Support* support, Api&& api) requires (!serverMode);
         ~InputBase();
 
     public:
-        void init(Support* support) requires (serverMode);
+        void setSupport(Support* support) requires (serverMode);
 
     public:
-        bool /*done*/ onReceived(bytes::Alter data) = delete;
-        void onFailed(primitives::ExceptionPtr) = delete;
-        void onClosed() = delete;
-
-    protected:
-        Support* _support{};
+        bool /*done*/ onReceived(bytes::Alter& data) = delete;
     };
 }
 
-namespace dci::module::www::io
-{
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <class Support_, class Impl, bool serverMode>
-    InputBase<Support_, Impl, serverMode>::InputBase() requires (serverMode)
-    {
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <class Support_, class Impl, bool serverMode>
-    InputBase<Support_, Impl, serverMode>::InputBase(Support* support) requires (!serverMode)
-        : _support{support}
-    {
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <class Support_, class Impl, bool serverMode>
-    InputBase<Support_, Impl, serverMode>::~InputBase()
-    {
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <class Support_, class Impl, bool serverMode>
-    void InputBase<Support_, Impl, serverMode>::init(Support* support) requires (serverMode)
-    {
-        _support = support;
-    }
-}
+#include "inputBase.ipp"

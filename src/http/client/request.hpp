@@ -18,15 +18,13 @@ namespace dci::module::www::http::client
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     class Request
-        : public io::OutputBase<io::Plexus<Response, Request, false>, Request>
+        : public io::OutputBase<io::Plexus<Response, Request, false>, Request, api::http::client::Request<>::Opposite>
     {
-        using Base = io::OutputBase<io::Plexus<Response, Request, false>, Request>;
-    public:
-        Request(Support* support, api::http::client::Request<>::Opposite api);
-        ~Request();
+        using Support = io::Plexus<Response, Request, false>;
+        using Base = io::OutputBase<io::Plexus<Response, Request, false>, Request, api::http::client::Request<>::Opposite>;
 
-    private:
-        api::http::client::Request<>::Opposite  _api;
-        sbs::Owner                              _sol;
+    public:
+        Request(Support* support, api::http::client::Request<>::Opposite&& api);
+        ~Request();
     };
 }

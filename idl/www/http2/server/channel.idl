@@ -5,9 +5,16 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-require "../message.idl"
+require "../../channel.idl"
+require "request.idl"
+require "response.idl"
 
-scope www::http::client
+scope www::http2::server
 {
-    interface Response : message::S2C::Opposite {}
+    interface Channel
+        : www::Channel
+    {
+        out io(Request, Response);
+        in push(Response);
+    }
 }

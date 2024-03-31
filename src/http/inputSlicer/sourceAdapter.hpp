@@ -5,16 +5,28 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-require "request.idl"
-require "response.idl"
-require "../../channel.idl"
+#pragma once
 
-scope www::http::server
+#include "pch.hpp"
+
+namespace dci::module::www::http::inputSlicer
 {
-    interface Channel : www::Channel
+    struct SourceAdapter
     {
-        out upgradeHttp2(www::Channel http2ServerChannel) -> bool;
-        out upgradeWs(www::Channel wsChannel) -> bool;
-        out io(Request, Response);
-    }
+        bytes::Alter& _data;
+        std::string_view _segment;
+        std::size_t _dropped{};
+
+        SourceAdapter(bytes::Alter& data);
+        ~SourceAdapter();
+
+        const char* segmentBegin() const;
+        const char* segmentEnd() const;
+        std::size_t segmentSize() const;
+
+        bool empty() const;
+        char front();
+
+        void dropFront(std::size_t amount);
+    };
 }

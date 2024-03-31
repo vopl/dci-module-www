@@ -18,18 +18,15 @@ namespace dci::module::www::http::client
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     class Response
-        : public io::InputBase<io::Plexus<Response, Request, false>, Response, false>
+        : public io::InputBase<io::Plexus<Response, Request, false>, Response, api::http::client::Response<>::Opposite, false>
     {
-        using Base = io::InputBase<io::Plexus<Response, Request, false>, Response, false>;
+        using Support = io::Plexus<Response, Request, false>;
+        using Base = io::InputBase<io::Plexus<Response, Request, false>, Response, api::http::client::Response<>::Opposite, false>;
+
     public:
         Response(Support* support, api::http::client::Response<>::Opposite api);
         ~Response();
 
         bool /*done*/ onReceived(bytes::Alter data);
-        void onFailed(primitives::ExceptionPtr);
-        void onClosed();
-
-    private:
-        api::http::client::Response<>::Opposite _api;
     };
 }

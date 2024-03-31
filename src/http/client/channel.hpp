@@ -16,13 +16,11 @@ namespace dci::module::www::http::client
 {
     class Channel
         : public api::http::client::Channel<>::Opposite
-        , public host::module::ServiceBase<Channel>
+        , public mm::heap::Allocable<Channel>
+        , public io::Plexus<Response, Request, false>
     {
     public:
         Channel(idl::net::stream::Channel<> netStreamChannel);
         ~Channel();
-
-    private:
-        io::Plexus<Response, Request, false> _ioPlexus;
     };
 }

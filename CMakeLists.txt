@@ -69,6 +69,7 @@ dciTest(${UNAME} mstart
         cmt
         poll
         idl
+        logger
     DEPENDS
         ${UNAME}
 )

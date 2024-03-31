@@ -13,9 +13,8 @@
 namespace dci::module::www::http::client
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Request::Request(Support* support, api::http::client::Request<>::Opposite api)
-        : Base{support}
-        , _api{std::move(api)}
+    Request::Request(Support* support, api::http::client::Request<>::Opposite&& api)
+        : Base{support, std::move(api)}
     {
         // in firstLine(firstLine::Method, string path, firstLine::Version);
         _api.methods()->firstLine() += _sol * [this](api::http::firstLine::Method method, primitives::String&& path, api::http::firstLine::Version version)

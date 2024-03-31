@@ -18,15 +18,12 @@ namespace dci::module::www::http::server
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     class Response
-        : public io::OutputBase<io::Plexus<Request, Response, true>, Response>
+        : public io::OutputBase<io::Plexus<Request, Response, true>, Response, api::http::server::Response<>::Opposite>
     {
-        using Base = io::OutputBase<io::Plexus<Request, Response, true>, Response>;
+        using Support = io::Plexus<Request, Response, true>;
+        using Base = io::OutputBase<io::Plexus<Request, Response, true>, Response, api::http::server::Response<>::Opposite>;
     public:
-        Response(Support* support);
+        Response(Support* support, api::http::server::Response<>::Opposite&& api);
         ~Response();
-
-    private:
-        api::http::server::Response<>::Opposite _api;
-        sbs::Owner                              _sol;
     };
 }

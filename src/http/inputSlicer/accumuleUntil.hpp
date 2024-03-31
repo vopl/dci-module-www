@@ -5,28 +5,17 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include "pch.hpp"
-#include "response.hpp"
-#include "request.hpp"
+#pragma once
 
-namespace dci::module::www::http::client
+#include "pch.hpp"
+#include "result.hpp"
+#include "sourceAdapter.hpp"
+
+namespace dci::module::www::http::inputSlicer
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Response::Response(Support* support, api::http::client::Response<>::Opposite api)
-        : Base{support, std::move(api)}
-    {
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Response::~Response()
-    {
-        _sol.flush();
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    bool /*done*/ Response::onReceived(bytes::Alter /*data*/)
-    {
-        dbgFatal("not impl");
-        _api->data(Bytes{}, true);
-    }
+    template <char terminator, class Accumuler>
+    Result accumuleUntil(SourceAdapter& source, Accumuler& accumuler);
 }
+
+#include "accumuleUntil.ipp"

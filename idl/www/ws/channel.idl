@@ -5,10 +5,17 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-require "../stream.idl"
-require "../message.idl"
+require "message.idl"
+require "../unreliable.idl"
 
-scope www::http2::server
+scope www::ws
 {
-    interface Request  : Stream, Message::Opposite {}
+    interface Channel
+        : Unreliable
+    {
+        out inputTxt(Message);
+        out inputBin(Message);
+        in outputTxt(Message);
+        in outputBin(Message);
+    }
 }

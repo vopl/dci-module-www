@@ -9,7 +9,11 @@
 #include <dci/host/module/entry.hpp>
 #include <dci/cmt.hpp>
 #include <dci/exception.hpp>
+#include <dci/utils/atScopeExit.hpp>
+#include <dci/utils/compiler.hpp>
+
 #include <bit>
+#include <deque>
 #include "www.hpp"
 
 namespace dci::module::www
