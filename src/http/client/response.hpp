@@ -27,6 +27,6 @@ namespace dci::module::www::http::client
         Response(Support* support, api::http::client::Response<>::Opposite api);
         ~Response();
 
-        bool /*done*/ onReceived(bytes::Alter data);
+        io::InputProcessResult process(bytes::Alter& data);
     };
 }

@@ -13,26 +13,8 @@ namespace dci::module::www::http::server
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     Channel::Channel(idl::net::stream::Channel<> netStreamChannel)
         : api::http::server::Channel<>::Opposite{idl::interface::Initializer{}}
-        , io::Plexus<Request, Response, true>{std::move(netStreamChannel)}
+        , io::Plexus<Request, Response, true>{std::move(netStreamChannel), *this}
     {
-        // in close();
-        methods()->close() += _sol * [&]()
-        {
-            io::Plexus<Request, Response, true>::close();
-        };
-
-        // out closed();
-        io::Plexus<Request, Response, true>::_closed.out() += _sol * [&]()
-        {
-            methods()->closed();
-        };
-
-        // out failed(exception);
-        io::Plexus<Request, Response, true>::_failed.out() += _sol * [&](primitives::ExceptionPtr err)
-        {
-            methods()->failed(std::move(err));
-        };
-
         // out upgradeHttp2(www::Channel::Opposite http2ServerChannel) -> bool;
         // out upgradeWs(www::Channel::Opposite wsChannel) -> bool;
         // out io(Request::Opposite, Response::Opposite);

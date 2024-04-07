@@ -14,7 +14,7 @@
 namespace dci::module::www::http::inputSlicer
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <char terminator, class Accumuler>
+    template <char terminator, Result tooBig, class Accumuler>
     Result accumuleUntil(SourceAdapter& source, Accumuler& accumuler);
 }
 

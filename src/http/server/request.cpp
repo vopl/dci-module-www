@@ -16,6 +16,7 @@ namespace dci::module::www::http::server
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     Request::Request()
         : Base{}
+        , _response{}
     {
     }
 
@@ -26,69 +27,94 @@ namespace dci::module::www::http::server
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    bool /*done*/ Request::onReceived(bytes::Alter& data)
+    void Request::setResponse(Response* response)
     {
-        inputSlicer::SourceAdapter sa{data};
-
-        switch(this->process(sa))
-        {
-        case inputSlicer::Result::needMoreInput:
-            dbgAssert(data.atBegin() && data.atEnd());
-            return false;
-        case inputSlicer::Result::malformedInput:
-            _support->close(exception::buildInstance<api::http::error::MalformedInputReceived>());
-            break;
-        case inputSlicer::Result::done:
-            break;
-        }
-
-        return true;
+        _response = response;
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    inputSlicer::Result Request::sliceDone(const inputSlicer::state::RequestFirstLine& firstLine)
+    io::InputProcessResult Request::process(bytes::Alter& data)
+    {
+        inputSlicer::SourceAdapter sa{data};
+
+        inputSlicer::Result inputSlicerResult = IS::process(sa);
+        switch(inputSlicerResult)
+        {
+        case inputSlicer::Result::needMore:
+            dbgAssert(data.atBegin() && data.atEnd());
+            if(hasDetacheableHeadersAccumuled(true))
+                _api->headers(detachHeadersAccumuled(true), false);
+            return io::InputProcessResult::needMore;
+
+        case inputSlicer::Result::done:
+            _response = nullptr;
+            if(_api)
+            {
+                _api->done();
+                reset();
+            }
+            return io::InputProcessResult::done;
+
+        default:
+            break;
+        }
+
+         _response->requestFailed(inputSlicerResult);
+        _response = nullptr;
+        return io::InputProcessResult::bad;
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    inputSlicer::Result Request::sliceStart()
+    {
+        reset();
+
+        api::http::server::Request<> api;
+        Base::setApi(api.init2());
+        static_cast<Channel*>(_support)->emitIo(std::move(api));
+
+        return inputSlicer::Result::done;
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    inputSlicer::Result Request::sliceDone(inputSlicer::state::RequestFirstLine& firstLine)
     {
         //std::cout << "[" << firstLine._method <<"][" << firstLine._uri << "][" << firstLine._version << "]" << std::endl;
 
-        _sol.flush();
-        if(_api)
-        {
-            _api->done();
-            _api.reset();
-        }
-
         std::optional<api::http::firstLine::Method> method = enumSupport::toEnum<api::http::firstLine::Method>(firstLine._method.str());
         if(!method)
-            return inputSlicer::Result::malformedInput;
+            return inputSlicer::Result::badMethod;
 
         std::optional<api::http::firstLine::Version> version = enumSupport::toEnum<api::http::firstLine::Version>(firstLine._version.str());
         if(!version)
-            return inputSlicer::Result::malformedInput;
-
-        {
-            api::http::server::Request<> api;
-            Base::setApi(api.init2());
-            static_cast<Channel*>(_support)->emitIo(std::move(api));
-        }
+            return inputSlicer::Result::badVersion;
 
         _api->firstLine(*method, std::move(firstLine._uri._downstream), *version);
         return inputSlicer::Result::done;
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    inputSlicer::Result Request::sliceDone(const inputSlicer::state::Header& header)
+    inputSlicer::Result Request::sliceDone(inputSlicer::state::Header& header)
     {
-        if(header._empty)
-            std::cout << "[" << header._key <<"][" << header._value << "]" << std::endl;
-        else
-            std::cout << "[" << header._key <<"][" << header._value << "]" << std::endl;
-        return inputSlicer::Result::done;
+        // if(header._empty)
+        //     std::cout << "[" << header._key <<"][" << header._value << "]" << std::endl;
+        // else
+        //     std::cout << "[" << header._key <<"][" << header._value << "]" << std::endl;
+
+        if(inputSlicer::state::Header::Kind::empty == header._kind)
+        {
+            _api->headers(IS::detachHeadersAccumuled(false), true);
+            return inputSlicer::Result::done;
+        }
+
+        return IS::sliceDone(header);
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    inputSlicer::Result Request::sliceDone(const inputSlicer::state::Body& /*body*/)
+    inputSlicer::Result Request::sliceDone(inputSlicer::state::Body& /*body*/)
     {
         std::cout << "some body" << std::endl;
+        //_api->data(xxx);
         return inputSlicer::Result::done;
     }
 

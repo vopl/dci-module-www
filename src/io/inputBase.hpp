@@ -9,6 +9,7 @@
 
 #include "pch.hpp"
 #include "base.hpp"
+#include "inputProcessResult.hpp"
 
 namespace dci::module::www::io
 {
@@ -25,7 +26,7 @@ namespace dci::module::www::io
         void setSupport(Support* support) requires (serverMode);
 
     public:
-        bool /*done*/ onReceived(bytes::Alter& data) = delete;
+        InputProcessResult process(bytes::Alter& data) = delete;
     };
 }
 

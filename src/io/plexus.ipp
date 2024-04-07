@@ -21,8 +21,9 @@ namespace dci::module::www::io
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <class InputImpl, class OutputImpl, bool serverMode>
-    Plexus<InputImpl, OutputImpl, serverMode>::Plexus(idl::net::stream::Channel<> netStreamChannel)
+    Plexus<InputImpl, OutputImpl, serverMode>::Plexus(idl::net::stream::Channel<>&& netStreamChannel, idl::www::Unreliable<>::Opposite&& unreliableOpposite)
         : _netStreamChannel{std::move(netStreamChannel)}
+        , _unreliableOpposite{std::move(unreliableOpposite)}
     {
         if constexpr(serverMode)
             _inputHolder.setSupport(this);
@@ -41,43 +42,61 @@ namespace dci::module::www::io
         {
             _receivedData.end().write(std::move(data));
 
+            auto stopReceive = [&]
+            {
+                if(_receiveStarted && _netStreamChannel)
+                {
+                    _receiveStarted = false;
+                    _netStreamChannel->stopReceive();
+                }
+            };
+
+            if(InputProcessResult::bad == _inputProcessResult)
+            {
+                stopReceive();
+                return;
+            }
+
             if constexpr(serverMode)
             {
                 while(!_receivedData.empty())
                 {
-                    bool onReceiveResult;
                     {
                         bytes::Alter receivedDataAlter = _receivedData.begin();
-                        onReceiveResult = _inputHolder.onReceived(receivedDataAlter);
+                        _inputProcessResult = _inputHolder.process(receivedDataAlter);
                     }
 
-                    if(onReceiveResult)
-                        ;
-                    else if(!_receivedData.empty())
+                    switch(_inputProcessResult)
                     {
-                        close(exception::buildInstance<api::http::error::MalformedInputReceived>());
+                    case InputProcessResult::needMore:
+                    case InputProcessResult::done:
+                        break;
+
+                    case InputProcessResult::bad:
+                        stopReceive();
                         return;
                     }
                 }
             }
             else
             {
-                while(!_receivedData.empty() && !_inputHolder.empty())
-                {
-                    if(_inputHolder.front().onReceived(_receivedData.begin()))
-                        _inputHolder.pop_front();
-                    else if(!_receivedData.empty())
-                    {
-                        close(exception::buildInstance<api::http::error::MalformedInputReceived>());
-                        return;
-                    }
-                }
+                dbgFatal("not impl");
+                // while(!_receivedData.empty() && !_inputHolder.empty())
+                // {
+                //     if(_inputHolder.front().process(_receivedData.begin()))
+                //         _inputHolder.pop_front();
+                //     else if(!_receivedData.empty())
+                //     {
+                //         close(exception::buildInstance<api::http::error::response::BadResponse>());
+                //         return;
+                //     }
+                // }
 
-                if(!_receivedData.empty())
-                {
-                    _receiveStarted = false;
-                    _netStreamChannel->stopReceive();
-                }
+                // if(!_receivedData.empty())
+                // {
+                //     _receiveStarted = false;
+                //     _netStreamChannel->stopReceive();
+                // }
             }
         };
 
@@ -97,6 +116,13 @@ namespace dci::module::www::io
 
         if(serverMode || _receiveStarted)
             _netStreamChannel->startReceive();
+
+        // in close();
+        _unreliableOpposite->close() += _sol * [&]()
+        {
+            close();
+        };
+
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
@@ -142,6 +168,7 @@ namespace dci::module::www::io
     {
         _outputHolder.emplace_back(this, std::forward<OutputArgs>(outputArgs)...);
         _outputHolder.front().allowWrite();
+        _inputHolder.setResponse(&_outputHolder.front());
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
@@ -154,7 +181,13 @@ namespace dci::module::www::io
         {
             _outputHolder.front().allowWrite();
             if(_outputHolder.front().isDone())
+            {
+                if(_outputHolder.front().isFail())
+                {
+                    dbgFatal("not impl"); //закрыть соединение
+                }
                 _outputHolder.pop_front();
+            }
             else
                 break;
         }
@@ -205,9 +238,12 @@ namespace dci::module::www::io
         }
         _outputHolder.clear();
 
-        if(e)
-            _failed.in(std::move(e));
+        if(_unreliableOpposite)
+        {
+            if(e)
+                _unreliableOpposite->failed(std::move(e));
 
-        _closed.in();
+            _unreliableOpposite->closed();
+        }
     }
 }

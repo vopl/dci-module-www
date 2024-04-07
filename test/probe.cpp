@@ -17,27 +17,30 @@ using namespace dci::host;
 using namespace dci::cmt;
 using namespace dci::idl;
 
-/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-std::tuple<
-    www::http::client::Channel<>,
-    www::http::server::Channel<>
-> connectedPair()
+namespace
 {
-    Manager* manager = testManager();
-    net::Host<> netHost = *manager->createService<net::Host<>>();
-    www::Factory<> wwwFactory = *manager->createService<www::Factory<>>();
-
-    net::stream::Server<> netServer = *netHost->streamServer();
-    *netServer->listen(net::Ip4Endpoint{{127,0,0,19}, 0});
-    utils::S2f accepted = netServer->accepted();
-
-    auto connected = *netHost->streamClient()->connect(*netServer->localEndpoint());
-
-    return
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    std::tuple<
+        www::http::client::Channel<>,
+        www::http::server::Channel<>
+    > connectedPair()
     {
-        *wwwFactory->httpClientChannel(connected),
-        *wwwFactory->httpServerChannel(*accepted)
-    };
+        Manager* manager = testManager();
+        net::Host<> netHost = *manager->createService<net::Host<>>();
+        www::Factory<> wwwFactory = *manager->createService<www::Factory<>>();
+
+        net::stream::Server<> netServer = *netHost->streamServer();
+        *netServer->listen(net::Ip4Endpoint{{127,0,0,19}, 0});
+        utils::S2f accepted = netServer->accepted();
+
+        auto connected = netHost->streamClient()->connect(*netServer->localEndpoint());
+
+        return
+        {
+            *wwwFactory->httpClientChannel(*connected),
+            *wwwFactory->httpServerChannel(*accepted)
+        };
+    }
 }
 
 /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
@@ -105,7 +108,7 @@ TEST(module_www, probe)
                     }, true);
         clnReq->data("xyz", true);
         clnReq->done();
-    };
+    }
 
     auto wres = cmt::wait(poll::timeout(std::chrono::seconds{1}) || (srvFirstLineDone && srvHeadersDone && srvDataDone));
     EXPECT_EQ(wres.to_string(), "0111");

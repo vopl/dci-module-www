@@ -10,9 +10,27 @@ scope www::http
     exception Error {}
     scope error
     {
-        exception MalformedInputReceived : Error {}
+        exception Request : Error {}
+        scope request
+        {
+            exception BadRequest    : Request {}
+            exception BadMethod     : Request {}
+            exception BadVersion    : Request {}
+            exception TooBigUri     : Request {}
+            exception TooBigHeaders : Request {}
+            exception TooBigContent : Request {}
+        }
+
+        exception Response : Error {}
+        scope response
+        {
+            exception BadResponse   : Response {}
+            exception BadVersion    : Response {}
+            exception BadStatus     : Response {}
+            exception TooBigHeaders : Response {}
+            exception TooBigContent : Response {}
+        }
+
         exception DownstreamFailed : Error {}
-        exception UnknownRequestMethod : Error {}
-        exception UnknownRequestVersion : Error {}
     }
 }

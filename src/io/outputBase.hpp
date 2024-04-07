@@ -21,17 +21,20 @@ namespace dci::module::www::io
         ~OutputBase();
 
     public:
+        bool isFail();
         bool isDone();
         void allowWrite();
 
     protected:
         void flushBuffer();
         void apiDone();
+        void fail();
 
     protected:
         Bytes    _buffer;
         bool     _writeAllowed{};
         bool     _apiDone{};
+        bool     _fail{};
     };
 }
 

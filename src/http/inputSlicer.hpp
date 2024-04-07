@@ -23,12 +23,17 @@ namespace dci::module::www::http
         InputSlicer() requires (inputSlicer::Mode::response == mode);
         ~InputSlicer();
 
+        void reset();
         inputSlicer::Result process(inputSlicer::SourceAdapter& sa);
 
-    private:
+        bool hasDetacheableHeadersAccumuled(bool keepLast) const;
+        primitives::List<api::http::Header> detachHeadersAccumuled(bool keepLast);
+
+    protected:
+        inputSlicer::Result sliceStart();
         inputSlicer::Result sliceDone(const inputSlicer::state::RequestFirstLine& firstLine) = delete;
-        inputSlicer::Result sliceDone(const inputSlicer::state::Header& header) = delete;
-        inputSlicer::Result sliceDone(const inputSlicer::state::Body& body) = delete;
+        inputSlicer::Result sliceDone(inputSlicer::state::Header& header);
+        inputSlicer::Result sliceDone(inputSlicer::state::Body& body);
 
     private:
         using Processor = inputSlicer::Result (InputSlicer::*)(inputSlicer::SourceAdapter& sa);
@@ -48,6 +53,7 @@ namespace dci::module::www::http
 
         inputSlicer::Result firstLineCR(inputSlicer::SourceAdapter& sa);
 
+        inputSlicer::Result headerPreKey(inputSlicer::SourceAdapter& sa);
         inputSlicer::Result headerKey(inputSlicer::SourceAdapter& sa);
         inputSlicer::Result headerPreValue(inputSlicer::SourceAdapter& sa);
         inputSlicer::Result headerValue(inputSlicer::SourceAdapter& sa);
@@ -81,6 +87,35 @@ namespace dci::module::www::http
 
         template <class S, bool optimistic = true>
         S& state();
+
+        template <class S>
+        const S& state() const;
+
+    private:
+        primitives::List<api::http::Header> _headersAccumuled;
+
+    private:
+        enum class BodyPortionality
+        {
+            null,
+            byContentLength,
+            byConnectionClose,
+            chunked,
+        };
+
+        enum class BodyCompression
+        {
+            identity,
+            compress,
+            deflate,
+            gzip,
+            br,
+            zstd,
+        };
+
+        primitives::Opt<uint32> _bodyContentLength{};
+        BodyPortionality        _bodyPortionality{};
+        BodyCompression         _bodyCompression{};
     };
 }
 

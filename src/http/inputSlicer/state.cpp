@@ -32,7 +32,9 @@ namespace dci::module::www::http::inputSlicer::state
     {
         _key.reset();
         _value.reset();
-        _empty = false;
+        _kind = {};
+        // _empty = {};
+        // _valueContinue = {};
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7

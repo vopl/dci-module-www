@@ -8,19 +8,13 @@
 #pragma once
 
 #include "pch.hpp"
-#include "io/plexus.hpp"
-#include "response.hpp"
-#include "request.hpp"
 
-namespace dci::module::www::http::client
+namespace dci::module::www::io
 {
-    class Channel
-        : public api::http::client::Channel<>::Opposite
-        , public mm::heap::Allocable<Channel>
-        , public io::Plexus<Response, Request, false>
+    enum class InputProcessResult
     {
-    public:
-        Channel(idl::net::stream::Channel<>&& netStreamChannel);
-        ~Channel();
+        needMore,
+        done,
+        bad,
     };
 }

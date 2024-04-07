@@ -48,15 +48,23 @@ namespace dci::module::www::http::inputSlicer::state
     {
         Accumuler<std::array<char, 64>> _key;
         Accumuler<std::string, 8192>    _value;
-        bool                            _empty{false};
+
+        enum class Kind
+        {
+            unknown,
+            regular,
+            valueContinue,
+            empty
+        } _kind{};
 
         void reset();
     };
+    constexpr std::size_t _maxEntityHeaders{256};
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     struct Body
     {
-        bool _trailersFollows{false};
+        bool _trailersFollows{};
 
         void reset();
     };

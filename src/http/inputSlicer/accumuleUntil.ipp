@@ -13,7 +13,7 @@
 namespace dci::module::www::http::inputSlicer
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <char terminator, class Accumuler>
+    template <char terminator, Result tooBig, class Accumuler>
     Result accumuleUntil(SourceAdapter& source, Accumuler& accumuler)
     {
         while(!source.empty())
@@ -26,7 +26,7 @@ namespace dci::module::www::http::inputSlicer
             std::size_t size4Accumule = foundIter - availBegin;
 
             if(Accumuler::_limit < accumuler.size() + size4Accumule)
-                return Result::malformedInput;
+                return tooBig;
 
             accumuler.append(availBegin, foundIter);
 
@@ -39,6 +39,6 @@ namespace dci::module::www::http::inputSlicer
             }
         }
 
-        return Result::needMoreInput;
+        return Result::needMore;
     }
 }

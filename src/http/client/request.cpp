@@ -24,7 +24,7 @@ namespace dci::module::www::http::client
             std::optional<std::string_view> optStr = enumSupport::toString(method);
             if(!optStr)
             {
-                _support->close(exception::buildInstance<api::http::error::UnknownRequestMethod>());
+                _support->close(exception::buildInstance<api::http::error::request::BadMethod>());
                 return;
             }
             out.write(optStr->data(), optStr->size());
@@ -36,7 +36,7 @@ namespace dci::module::www::http::client
             optStr = enumSupport::toString(version);
             if(!optStr)
             {
-                _support->close(exception::buildInstance<api::http::error::UnknownRequestVersion>());
+                _support->close(exception::buildInstance<api::http::error::request::BadVersion>());
                 return;
             }
             out.write(optStr->data(), optStr->size());
@@ -58,7 +58,7 @@ namespace dci::module::www::http::client
                             std::optional<std::string_view> optStr = enumSupport::toString(value);
                             if(!optStr)
                             {
-                                _support->close(exception::buildInstance<api::http::error::UnknownRequestVersion>());
+                                _support->close(exception::buildInstance<api::http::error::request::BadRequest>());
                                 return;
                             }
                             out.write(optStr->data(), optStr->size());

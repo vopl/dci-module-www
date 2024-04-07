@@ -14,8 +14,17 @@ namespace dci::module::www::http::inputSlicer
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     enum class Result
     {
-        needMoreInput,
-        malformedInput,
+        needMore,
+
+        badEntity,  //400 Bad Request
+        badMethod,  //405 Method Not Allowed
+        badVersion, //505 HTTP Version Not Supported
+        badStatus,
+
+        tooBigContent,  //413 Content Too Large
+        tooBigUri,      //414 URI Too Long
+        tooBigHeaders,  //431 Request Header Fields Too Large
+
         done,
     };
 }

@@ -5,22 +5,16 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#pragma once
+#include <dci/test.hpp>
+#include <dci/host.hpp>
+#include "www.hpp"
 
-#include "pch.hpp"
-#include "io/plexus.hpp"
-#include "response.hpp"
-#include "request.hpp"
+using namespace dci;
+using namespace dci::host;
+using namespace dci::cmt;
+using namespace dci::idl;
 
-namespace dci::module::www::http::client
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, client)
 {
-    class Channel
-        : public api::http::client::Channel<>::Opposite
-        , public mm::heap::Allocable<Channel>
-        , public io::Plexus<Response, Request, false>
-    {
-    public:
-        Channel(idl::net::stream::Channel<>&& netStreamChannel);
-        ~Channel();
-    };
 }

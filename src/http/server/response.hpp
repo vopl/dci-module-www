@@ -10,6 +10,7 @@
 #include "pch.hpp"
 #include "io/plexus.hpp"
 #include "io/outputBase.hpp"
+#include "../inputSlicer/result.hpp"
 
 namespace dci::module::www::http::server
 {
@@ -22,8 +23,18 @@ namespace dci::module::www::http::server
     {
         using Support = io::Plexus<Request, Response, true>;
         using Base = io::OutputBase<io::Plexus<Request, Response, true>, Response, api::http::server::Response<>::Opposite>;
+
     public:
         Response(Support* support, api::http::server::Response<>::Opposite&& api);
         ~Response();
+
+        void requestFailed(inputSlicer::Result inputSlicerResult);
+
+    public:
+        void someWrote();
+
+    private:
+        bool _someWote{};
+        inputSlicer::Result _inputSlicerResult{inputSlicer::Result::done};
     };
 }

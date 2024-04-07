@@ -34,6 +34,13 @@ namespace dci::module::www::io
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <class Support, class Impl, class Api>
+    bool OutputBase<Support, Impl, Api>::isFail()
+    {
+        return _fail;
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    template <class Support, class Impl, class Api>
     void OutputBase<Support, Impl, Api>::allowWrite()
     {
         _writeAllowed = true;
@@ -47,6 +54,8 @@ namespace dci::module::www::io
         if(_writeAllowed && !_buffer.empty())
         {
             this->_support->write(std::move(_buffer));
+            if constexpr (requires {{static_cast<Impl*>(this)->someWrote()};})
+                static_cast<Impl*>(this)->someWrote();
             dbgAssert(_buffer.empty());
             if(isDone())
                 this->_support->done(static_cast<Impl*>(this));
@@ -60,6 +69,19 @@ namespace dci::module::www::io
         if(!_apiDone)
         {
             _apiDone = true;
+            if(isDone())
+                this->_support->done(static_cast<Impl*>(this));
+        }
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    template <class Support, class Impl, class Api>
+    void OutputBase<Support, Impl, Api>::fail()
+    {
+        if(!_fail)
+        {
+            _apiDone = true;
+            _fail = true;
             if(isDone())
                 this->_support->done(static_cast<Impl*>(this));
         }

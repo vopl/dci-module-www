@@ -20,21 +20,27 @@ namespace dci::module::www::http::server
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     class Request
         : public io::InputBase<io::Plexus<Request, Response, true>, Request, api::http::server::Request<>::Opposite, true>
-        , private InputSlicer<inputSlicer::Mode::request, Request>
+        , protected InputSlicer<inputSlicer::Mode::request, Request>
     {
         using Support = io::Plexus<Request, Response, true>;
         using Base = io::InputBase<io::Plexus<Request, Response, true>, Request, api::http::server::Request<>::Opposite, true>;
+        using IS = InputSlicer<inputSlicer::Mode::request, Request>;
 
     public:
         Request();
         ~Request();
 
-        bool /*done*/ onReceived(bytes::Alter& data);
+        void setResponse(Response* response);
+        io::InputProcessResult process(bytes::Alter& data);
 
     private:
-        friend struct InputSlicer<inputSlicer::Mode::request, Request>;
-        inputSlicer::Result sliceDone(const inputSlicer::state::RequestFirstLine& firstLine);
-        inputSlicer::Result sliceDone(const inputSlicer::state::Header& header);
-        inputSlicer::Result sliceDone(const inputSlicer::state::Body& body);
+        friend IS;
+        inputSlicer::Result sliceStart();
+        inputSlicer::Result sliceDone(inputSlicer::state::RequestFirstLine& firstLine);
+        inputSlicer::Result sliceDone(inputSlicer::state::Header& header);
+        inputSlicer::Result sliceDone(inputSlicer::state::Body& body);
+
+    private:
+        Response* _response{};
     };
 }

@@ -8,6 +8,7 @@
 #pragma once
 
 #include "pch.hpp"
+#include "inputProcessResult.hpp"
 
 namespace dci::module::www::io
 {
@@ -19,7 +20,7 @@ namespace dci::module::www::io
         sbs::Owner& sol();
 
     public:
-        Plexus(idl::net::stream::Channel<> netStreamChannel);
+        Plexus(idl::net::stream::Channel<>&& netStreamChannel, idl::www::Unreliable<>::Opposite&& unreliableOpposite);
         ~Plexus();
 
         template <class... InputArgs, class... OutputArgs>
@@ -34,13 +35,12 @@ namespace dci::module::www::io
 
     public:
         void close(primitives::ExceptionPtr e = {});
-        sbs::Wire<>                                 _closed;
-        sbs::Wire<void, primitives::ExceptionPtr>   _failed;
 
         sbs::Owner _sol;
 
     private:
         idl::net::stream::Channel<> _netStreamChannel;
+        idl::www::Unreliable<>::Opposite _unreliableOpposite;
 
         using InputHolder = utils::ct::If<serverMode, InputImpl, std::deque<InputImpl>>;
         InputHolder   _inputHolder;
@@ -50,6 +50,7 @@ namespace dci::module::www::io
 
         bool _receiveStarted{};
         Bytes _receivedData;
+        InputProcessResult _inputProcessResult{};
     };
 }
 

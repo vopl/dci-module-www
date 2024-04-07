@@ -24,7 +24,7 @@ namespace dci::module::www::http::client
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    bool /*done*/ Response::onReceived(bytes::Alter /*data*/)
+    io::InputProcessResult Response::process(bytes::Alter& /*data*/)
     {
         dbgFatal("not impl");
         _api->data(Bytes{}, true);
