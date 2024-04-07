@@ -108,6 +108,9 @@ namespace dci::module::www::http::server
 
         switch(_inputSlicerResult)
         {
+        default:
+            dbgAssert("bad inputSlicerResult value");
+            [[fallthrough]];
         case inputSlicer::Result::badStatus:
         case inputSlicer::Result::badEntity:
             _buffer = "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n";
@@ -127,8 +130,6 @@ namespace dci::module::www::http::server
         case inputSlicer::Result::tooBigHeaders:
             _buffer = "HTTP/1.1 431 Request Header Fields Too Large\r\nConnection: close\r\n\r\n";
             break;
-        default:
-            dbgAssert("bad inputSlicerResult value");
         }
 
         flushBuffer();
