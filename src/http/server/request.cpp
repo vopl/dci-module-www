@@ -35,9 +35,13 @@ namespace dci::module::www::http::server
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     io::InputProcessResult Request::process(bytes::Alter& data)
     {
-        inputSlicer::SourceAdapter sa{data};
+        inputSlicer::Result inputSlicerResult;
+        {
+            inputSlicer::SourceAdapter sa{data};
+            inputSlicerResult = IS::process(sa);
+        }
 
-        inputSlicer::Result inputSlicerResult = IS::process(sa);
+        ExceptionPtr err4Fail;
         switch(inputSlicerResult)
         {
         case inputSlicer::Result::needMore:
@@ -55,12 +59,38 @@ namespace dci::module::www::http::server
             }
             return io::InputProcessResult::done;
 
+        case inputSlicer::Result::badEntity:
+            err4Fail = exception::buildInstance<api::http::error::request::BadRequest>();
+            break;
+
+        case inputSlicer::Result::badMethod:
+            err4Fail = exception::buildInstance<api::http::error::request::BadMethod>();
+            break;
+
+        case inputSlicer::Result::badVersion:
+            err4Fail = exception::buildInstance<api::http::error::request::BadVersion>();
+            break;
+
+        case inputSlicer::Result::tooBigContent:
+            err4Fail = exception::buildInstance<api::http::error::request::TooBigContent>();
+            break;
+
+        case inputSlicer::Result::tooBigUri:
+            err4Fail = exception::buildInstance<api::http::error::request::TooBigUri>();
+            break;
+
+        case inputSlicer::Result::tooBigHeaders:
+            err4Fail = exception::buildInstance<api::http::error::request::TooBigHeaders>();
+            break;
+
         default:
+            unreacheable();
             break;
         }
 
-         _response->requestFailed(inputSlicerResult);
-        _response = nullptr;
+        _response->requestFailed(inputSlicerResult);
+        close(std::move(err4Fail));
+
         return io::InputProcessResult::bad;
     }
 
@@ -84,6 +114,15 @@ namespace dci::module::www::http::server
         std::optional<api::http::firstLine::Method> method = enumSupport::toEnum<api::http::firstLine::Method>(firstLine._method.str());
         if(!method)
             return inputSlicer::Result::badMethod;
+
+        if( firstLine._version._size < 5 ||
+            firstLine._version._downstream[0] != 'H' ||
+            firstLine._version._downstream[1] != 'T' ||
+            firstLine._version._downstream[2] != 'T' ||
+            firstLine._version._downstream[3] != 'P' ||
+            firstLine._version._downstream[4] != '/'
+        )
+            return inputSlicer::Result::badEntity;
 
         std::optional<api::http::firstLine::Version> version = enumSupport::toEnum<api::http::firstLine::Version>(firstLine._version.str());
         if(!version)

@@ -101,17 +101,15 @@ namespace dci::module::www::http::server
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     void Response::requestFailed(inputSlicer::Result inputSlicerResult)
     {
-        _sol.flush();
-        _inputSlicerResult = inputSlicerResult;
         if(_someWote)
             return;
 
-        switch(_inputSlicerResult)
+        switch(inputSlicerResult)
         {
         default:
+        case inputSlicer::Result::badStatus:
             dbgAssert("bad inputSlicerResult value");
             [[fallthrough]];
-        case inputSlicer::Result::badStatus:
         case inputSlicer::Result::badEntity:
             _buffer = "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n";
             break;
@@ -133,7 +131,6 @@ namespace dci::module::www::http::server
         }
 
         flushBuffer();
-        fail();
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7

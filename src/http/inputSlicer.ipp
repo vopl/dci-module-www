@@ -280,7 +280,7 @@ namespace dci::module::www::http
     template <inputSlicer::Mode mode, class Derived>
     inputSlicer::Result InputSlicer<mode, Derived>::requestFirstLineVersion(inputSlicer::SourceAdapter& sa) requires (inputSlicer::Mode::request == mode)
     {
-        inputSlicer::Result result = inputSlicer::accumuleUntil<'\r', inputSlicer::Result::badVersion>(sa, state<inputSlicer::state::RequestFirstLine>()._version);
+        inputSlicer::Result result = inputSlicer::accumuleUntil<'\r', inputSlicer::Result::badEntity>(sa, state<inputSlicer::state::RequestFirstLine>()._version);
         if(inputSlicer::Result::done != result)
             return result;
 
@@ -305,7 +305,7 @@ namespace dci::module::www::http
     template <inputSlicer::Mode mode, class Derived>
     inputSlicer::Result InputSlicer<mode, Derived>::responseFirstLineVersion(inputSlicer::SourceAdapter& sa) requires (inputSlicer::Mode::response == mode)
     {
-        inputSlicer::Result result = inputSlicer::accumuleUntil<' ', inputSlicer::Result::badVersion>(sa, state<inputSlicer::state::ResponseFirstLine>()._version);
+        inputSlicer::Result result = inputSlicer::accumuleUntil<' ', inputSlicer::Result::badEntity>(sa, state<inputSlicer::state::ResponseFirstLine>()._version);
         if(inputSlicer::Result::done != result)
             return result;
 

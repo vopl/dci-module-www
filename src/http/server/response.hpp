@@ -35,6 +35,5 @@ namespace dci::module::www::http::server
 
     private:
         bool _someWote{};
-        inputSlicer::Result _inputSlicerResult{inputSlicer::Result::done};
     };
 }

@@ -9,6 +9,7 @@
 #include "www.hpp"
 #include "www-stiac-support.hpp"
 #include "factory.hpp"
+#include "channelSoftClosing.hpp"
 
 namespace dci::module::www
 {
@@ -34,6 +35,24 @@ namespace dci::module::www
             const Manifest& manifest() override
             {
                 return manifest_;
+            }
+
+            bool start(host::Manager* manager) override
+            {
+                ChannelSoftClosing::moduleStarted();
+                return dci::host::module::Entry::start(manager);
+            }
+
+            cmt::Future<> stopRequest() override
+            {
+                ChannelSoftClosing::moduleStopRequested();
+                return dci::host::module::Entry::stopRequest();
+            }
+
+            bool stop() override
+            {
+                ChannelSoftClosing::moduleStopped();
+                return dci::host::module::Entry::stop();
             }
 
             dci::cmt::Future<dci::idl::Interface> createService(dci::idl::ILid ilid) override

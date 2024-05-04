@@ -102,4 +102,11 @@ namespace dci::module::www::io
     {
         _support->close();
     }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    template <class Support, class Impl, class Api>
+    void Base<Support, Impl, Api>::close(primitives::ExceptionPtr e)
+    {
+        _support->close(std::move(e));
+    }
 }

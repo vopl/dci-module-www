@@ -27,6 +27,7 @@ namespace dci::module::www::io
         void onFailed(primitives::ExceptionPtr);
         void onClosed();
         void closeByApi();
+        void close(primitives::ExceptionPtr);
 
     protected:
         Support*    _support{};

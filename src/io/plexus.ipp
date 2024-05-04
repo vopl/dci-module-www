@@ -9,6 +9,7 @@
 
 #include "pch.hpp"
 #include "plexus.hpp"
+#include "../channelSoftClosing.hpp"
 
 namespace dci::module::www::io
 {
@@ -184,7 +185,8 @@ namespace dci::module::www::io
             {
                 if(_outputHolder.front().isFail())
                 {
-                    dbgFatal("not impl"); //закрыть соединение
+                    close();
+                    break;
                 }
                 _outputHolder.pop_front();
             }
@@ -207,7 +209,7 @@ namespace dci::module::www::io
         _sol.flush();
 
         if(_netStreamChannel)
-            _netStreamChannel->close();
+            ChannelSoftClosing::instance().push(std::exchange(_netStreamChannel, {}));
 
         _receiveStarted = false;
         _receivedData.clear();

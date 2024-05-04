@@ -9,6 +9,7 @@
 #include <dci/host/module/entry.hpp>
 #include <dci/cmt.hpp>
 #include <dci/exception.hpp>
+#include <dci/poll/timeout.hpp>
 #include <dci/utils/atScopeExit.hpp>
 #include <dci/utils/compiler.hpp>
 
