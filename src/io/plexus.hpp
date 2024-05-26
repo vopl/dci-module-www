@@ -34,6 +34,7 @@ namespace dci::module::www::io
         void write(Bytes data);
 
     public:
+        void closeInput(primitives::ExceptionPtr e = {});
         void close(primitives::ExceptionPtr e = {});
 
         sbs::Owner _sol;

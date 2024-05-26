@@ -109,6 +109,7 @@ namespace dci::module::www::http
         }
 
         _headersAccumuled.clear();
+        _headersValueSize = {};
         _bodyContentLength.reset();
         _bodyPortionality = {};
         _bodyCompression = {};
@@ -179,6 +180,43 @@ namespace dci::module::www::http
                 if(inputSlicer::state::_maxEntityHeaders <= _headersAccumuled.size())
                     return inputSlicer::Result::tooBigHeaders;
 
+                if(!header._key._size)
+                    return inputSlicer::Result::badEntity;
+
+                for(std::size_t i{}; i<header._key._size; ++i)
+                {
+                    char c = header._key._downstream[i];
+                    switch(c)
+                    {
+                    case '(':
+                    case ')':
+                    case '<':
+                    case '>':
+                    case '@':
+                    case ',':
+                    case ';':
+                    case ':':
+                    case '\\':
+                    case '"':
+                    case '/':
+                    case '[':
+                    case ']':
+                    case '?':
+                    case '=':
+                    case '{':
+                    case '}':
+                        return inputSlicer::Result::badEntity;
+                    default:
+                        if(32 >= c || 127 == c)
+                            return inputSlicer::Result::badEntity;
+                    }
+                }
+
+                rtrim(header._value._downstream);
+                _headersValueSize += header._value._downstream.size();
+                if(inputSlicer::state::_maxEntityHeaderValueSize <= _headersValueSize)
+                    return inputSlicer::Result::tooBigHeaders;
+
                 std::optional<api::http::header::KeyRecognized> keyRecognized = enumSupport::toEnum<api::http::header::KeyRecognized>(header._key.str());
                 if(keyRecognized)
                 {
@@ -206,10 +244,10 @@ namespace dci::module::www::http
                     }
 
                     if(provideToNext)
-                        _headersAccumuled.emplace_back(*keyRecognized, rtrim(std::move(header._value._downstream)));
+                        _headersAccumuled.emplace_back(*keyRecognized, std::move(header._value._downstream));
                 }
                 else
-                    _headersAccumuled.emplace_back(api::http::header::KeyAny{header._key.str()}, rtrim(std::move(header._value._downstream)));
+                    _headersAccumuled.emplace_back(api::http::header::KeyAny{header._key.str()}, std::move(header._value._downstream));
             }
             return inputSlicer::Result::needMore;
 
@@ -433,7 +471,7 @@ namespace dci::module::www::http
         if(sa.empty())
             return inputSlicer::Result::needMore;
 
-        inputSlicer::Result result = inputSlicer::accumuleUntil<':', inputSlicer::Result::tooBigHeaders>(sa, stateHeader._key);
+        inputSlicer::Result result = inputSlicer::accumuleUntil<':', inputSlicer::Result::badEntity>(sa, stateHeader._key);
         if(inputSlicer::Result::done != result)
             return result;
 

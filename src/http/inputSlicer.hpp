@@ -93,6 +93,7 @@ namespace dci::module::www::http
 
     private:
         primitives::List<api::http::Header> _headersAccumuled;
+        std::size_t                         _headersValueSize{};
 
     private:
         enum class BodyPortionality

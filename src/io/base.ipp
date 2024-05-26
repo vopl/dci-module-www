@@ -100,13 +100,13 @@ namespace dci::module::www::io
     template <class Support, class Impl, class Api>
     void Base<Support, Impl, Api>::closeByApi()
     {
-        _support->close();
+        _support->closeInput();
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <class Support, class Impl, class Api>
     void Base<Support, Impl, Api>::close(primitives::ExceptionPtr e)
     {
-        _support->close(std::move(e));
+        _support->closeInput(std::move(e));
     }
 }

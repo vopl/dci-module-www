@@ -55,6 +55,7 @@ namespace dci::module::www::http::server
             if(_api)
             {
                 _api->done();
+                _api.reset();
                 reset();
             }
             return io::InputProcessResult::done;
@@ -97,8 +98,6 @@ namespace dci::module::www::http::server
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     inputSlicer::Result Request::sliceStart()
     {
-        reset();
-
         api::http::server::Request<> api;
         Base::setApi(api.init2());
         static_cast<Channel*>(_support)->emitIo(std::move(api));

@@ -71,8 +71,13 @@ struct Spectacle
 
     std::deque<Action>              _actions;
     www::http::server::Channel<>    _target;
-    www::http::server::Request<>    _input;
-    www::http::server::Response<>   _output;
+
+    struct IO
+    {
+        www::http::server::Request<>    _input;
+        www::http::server::Response<>   _output;
+    };
+    std::deque<IO>                  _ios;
     net::stream::Channel<>          _peer;
     sbs::Owner                      _sol;
 
@@ -120,50 +125,49 @@ struct Spectacle
         {
             _actions.emplace_back(Io{});
 
-            _input = std::move(input);
-            _output = std::move(output);
-
             /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-            _input->failed() += _sol * [&](dci::primitives::ExceptionPtr&& e)
+            input->failed() += _sol * [&](dci::primitives::ExceptionPtr&& e)
             {
                 _actions.emplace_back(InputFailed{dci::exception::toString(e)});
             };
 
-            _input->closed() += _sol * [&]()
+            input->closed() += _sol * [&]()
             {
                 _actions.emplace_back(InputClosed{});
             };
 
-            _input->firstLine() += _sol * [&](www::http::firstLine::Method method, primitives::String&& uri, www::http::firstLine::Version version)
+            input->firstLine() += _sol * [&](www::http::firstLine::Method method, primitives::String&& uri, www::http::firstLine::Version version)
             {
                 _actions.emplace_back(InputFirstLine{ method, std::move(uri), version});
             };
 
-            _input->headers() += _sol * [&](primitives::List<www::http::Header>&& headers, bool done)
+            input->headers() += _sol * [&](primitives::List<www::http::Header>&& headers, bool done)
             {
                 _actions.emplace_back(InputHeaders{ std::move(headers), done});
             };
 
-            _input->data() += _sol * [&](Bytes&& data, bool done)
+            input->data() += _sol * [&](Bytes&& data, bool done)
             {
                 _actions.emplace_back(InputData{ std::move(data), done});
             };
 
-            _input->done() += _sol * [&]()
+            input->done() += _sol * [&]()
             {
                 _actions.emplace_back(InputDone{});
             };
 
             /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-            _output->failed() += _sol * [&](dci::primitives::ExceptionPtr&& e)
+            output->failed() += _sol * [&](dci::primitives::ExceptionPtr&& e)
             {
                 _actions.emplace_back(OutputFailed{dci::exception::toString(e)});
             };
 
-            _output->closed() += _sol * [&]()
+            output->closed() += _sol * [&]()
             {
                 _actions.emplace_back(OutputClosed{});
             };
+
+            _ios.emplace_back(IO{std::move(input), std::move(output)});
         };
 
         /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
@@ -354,4 +358,48 @@ TEST(module_www, server_badVersion)
     // PLAY_2_FAIL("GET uri HTTP/0.9\r\n\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
     // PLAY_2_FAIL("GET uri HTTP/1.0\r\n\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
     // PLAY_2_FAIL("GET uri HTTP/1.1\r\n\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
+}
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_badHeaderKey)
+{
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\n" + std::string(65, 'x') + ": xyz\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\n: xyz\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nxyz\r\n:\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nhea der: xyz\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nh e a d e r: xyz\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nheader\x00: xyz\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\n\x00header: xyz\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\n\x00: xyz\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+}
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_badHeaderValue)
+{
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nh:" + std::string(8193, 'v') + "\r\n", TooBigHeaders, "HTTP/1.1 431 Request Header Fields Too Large\r\nConnection: close\r\n\r\n");
+
+    {
+        std::string hdr = "h:" + std::string(4096, 'v') + "\r\n";
+        PLAY_2_FAIL("GET uri HTTP/1.1\r\n" + hdr + hdr + hdr + hdr + hdr + hdr + hdr + hdr + "\r\n", TooBigHeaders, "HTTP/1.1 431 Request Header Fields Too Large\r\nConnection: close\r\n\r\n");
+    }
+}
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_failChain)
+{
+        Spectacle spectacle;
+        spectacle._peer->send("GET uri HTTP/1.1\r\n\r\n");
+        spectacle.play();
+        spectacle._peer->send("GET uri HTTP/1.1\r\n\r\n");
+        spectacle.play();
+        spectacle._peer->send("GET uri HTTP/1.1\r\n\r\n");
+        spectacle.play();
+        spectacle._peer->send("GET uri HTTP/1.1\r\n\r\n");
+        spectacle.play();
+
+        spectacle._peer->send("bad req uest\r\n");
+        spectacle.play();
+
+        int k = 220;
 }

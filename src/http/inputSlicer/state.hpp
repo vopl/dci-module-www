@@ -60,6 +60,7 @@ namespace dci::module::www::http::inputSlicer::state
         void reset();
     };
     constexpr std::size_t _maxEntityHeaders{256};
+    constexpr std::size_t _maxEntityHeaderValueSize{32768};
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     struct Body

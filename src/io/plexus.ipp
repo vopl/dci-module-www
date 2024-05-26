@@ -204,6 +204,19 @@ namespace dci::module::www::io
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <class InputImpl, class OutputImpl, bool serverMode>
+    void Plexus<InputImpl, OutputImpl, serverMode>::closeInput(ExceptionPtr /*e*/)
+    {
+        if(_netStreamChannel)
+            _netStreamChannel->shutdown(true, false);
+
+        _receiveStarted = false;
+        _receivedData.clear();
+
+        dbgFatal("not impl");
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    template <class InputImpl, class OutputImpl, bool serverMode>
     void Plexus<InputImpl, OutputImpl, serverMode>::close(ExceptionPtr e)
     {
         _sol.flush();
