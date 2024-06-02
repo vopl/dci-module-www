@@ -204,15 +204,28 @@ namespace dci::module::www::io
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <class InputImpl, class OutputImpl, bool serverMode>
-    void Plexus<InputImpl, OutputImpl, serverMode>::closeInput(ExceptionPtr /*e*/)
+    void Plexus<InputImpl, OutputImpl, serverMode>::apiWantClose(OutputImpl* /*output*/)
     {
-        if(_netStreamChannel)
-            _netStreamChannel->shutdown(true, false);
-
-        _receiveStarted = false;
-        _receivedData.clear();
-
         dbgFatal("not impl");
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    template <class InputImpl, class OutputImpl, bool serverMode>
+    void Plexus<InputImpl, OutputImpl, serverMode>::apiWantClose(InputImpl* /*input*/)
+    {
+        dbgFatal("not impl");
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    template <class InputImpl, class OutputImpl, bool serverMode>
+    void Plexus<InputImpl, OutputImpl, serverMode>::failed(InputImpl* input, primitives::ExceptionPtr e)
+    {
+        _sol.flush();
+
+        input->fireFailed(e);
+        input->fireClosed();
+
+        close(exception::buildInstance<api::http::error::BadInput>());
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
@@ -230,16 +243,16 @@ namespace dci::module::www::io
         if constexpr(serverMode)
         {
             if(e)
-                _inputHolder.onFailed(e);
-            _inputHolder.onClosed();
+                _inputHolder.fireFailed(e);
+            _inputHolder.fireClosed();
         }
         else
         {
             for(InputImpl& inputImpl : _inputHolder)
             {
                 if(e)
-                    inputImpl.onFailed(e);
-                inputImpl.onClosed();
+                    inputImpl.fireFailed(e);
+                inputImpl.fireClosed();
             }
 
             _inputHolder.clear();
@@ -248,8 +261,8 @@ namespace dci::module::www::io
         for(OutputImpl& outputImpl : _outputHolder)
         {
             if(e)
-                outputImpl.onFailed(e);
-            outputImpl.onClosed();
+                outputImpl.fireFailed(e);
+            outputImpl.fireClosed();
         }
         _outputHolder.clear();
 
@@ -257,8 +270,7 @@ namespace dci::module::www::io
         {
             if(e)
                 _unreliableOpposite->failed(std::move(e));
-
-            _unreliableOpposite->closed();
+            std::exchange(_unreliableOpposite, {})->closed();
         }
     }
 }

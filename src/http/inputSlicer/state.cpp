@@ -11,35 +11,10 @@
 namespace dci::module::www::http::inputSlicer::state
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    void RequestFirstLine::reset()
-    {
-        _method.reset();
-        _uri.reset();
-        _version.reset();
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    void ResponseFirstLine::reset()
-    {
-        _version.reset();
-        _statusCode = {};
-        _statusCodeCharsCount = {};
-        _statusText.reset();
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    void Header::reset()
+    void Headers::Current::reset()
     {
         _key.reset();
         _value.reset();
         _kind = {};
-        // _empty = {};
-        // _valueContinue = {};
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    void Body::reset()
-    {
-        _trailersFollows = {};
     }
 }

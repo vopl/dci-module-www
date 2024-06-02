@@ -37,7 +37,7 @@ namespace dci::module::www::http::server
         friend IS;
         inputSlicer::Result sliceStart();
         inputSlicer::Result sliceDone(inputSlicer::state::RequestFirstLine& firstLine);
-        inputSlicer::Result sliceDone(inputSlicer::state::Header& header);
+        inputSlicer::Result sliceDone(inputSlicer::state::Headers& headers);
         inputSlicer::Result sliceDone(inputSlicer::state::Body& body);
 
     private:

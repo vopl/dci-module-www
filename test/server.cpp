@@ -239,14 +239,14 @@ struct Spectacle
 
 #define CHECK_FAIL_ONE(direction, failType)                                                                                         \
     ASSERT_TRUE(spectacle.has<Spectacle::direction##Failed>());                                                                     \
-    ASSERT_EQ(spectacle.get<Spectacle::direction##Failed>().get<0>(), "dci::idl::gen::www::http::error::request::" #failType "{}"); \
+    ASSERT_EQ(spectacle.get<Spectacle::direction##Failed>().get<0>(), "dci::idl::gen::www::http::error::" #failType "{}"); \
     ASSERT_TRUE(spectacle.has<Spectacle::direction##Failed>());                                                                     \
     ASSERT_LT(spectacle.pos<Spectacle::direction##Failed>(), spectacle.pos<Spectacle:: direction##Closed>());
 
 #define CHECK_FAIL(failType)        \
-    CHECK_FAIL_ONE(, failType)      \
+    CHECK_FAIL_ONE(, BadInput)      \
     CHECK_FAIL_ONE(Input, failType) \
-    CHECK_FAIL_ONE(Output, failType)
+    CHECK_FAIL_ONE(Output, BadInput)
 
 #define CHECK_PEERDATA(data)                                                                \
     ASSERT_TRUE(spectacle.has<Spectacle::PeerData>());                                      \
@@ -297,91 +297,91 @@ TEST(module_www, server_smallMethod)
 /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 TEST(module_www, server_bigMethod)
 {
-    PLAY_2_FAIL("01234567890123456789012345678901e", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET_____________________________e", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET_\t__\v_\b___\0_____________________e", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("01234567890123456789012345678901e",        request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET_____________________________e",        request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET_\t__\v_\b___\0_____________________e", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
 }
 
 /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 TEST(module_www, server_badMethod)
 {
-    PLAY_2_FAIL("TEG uri HTTP/1.1\r\n", BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("TE uri HTTP/1.1\r\n", BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("T uri HTTP/1.1\r\n", BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("XYZ uri HTTP/1.1\r\n", BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("1 uri HTTP/1.1\r\n", BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL(" uri HTTP/1.1\r\n", BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("# uri HTTP/1.1\r\n", BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("! uri HTTP/1.1\r\n", BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("\330 uri HTTP/1.1\r\n", BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("\n uri HTTP/1.1\r\n", BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("( uri HTTP/1.1\r\n", BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("TEG uri HTTP/1.1\r\n", request::BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("TE uri HTTP/1.1\r\n",  request::BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("T uri HTTP/1.1\r\n",   request::BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("XYZ uri HTTP/1.1\r\n", request::BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("1 uri HTTP/1.1\r\n",   request::BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL(" uri HTTP/1.1\r\n",    request::BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("# uri HTTP/1.1\r\n",   request::BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("! uri HTTP/1.1\r\n",   request::BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("\330 uri HTTP/1.1\r\n",request::BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("\n uri HTTP/1.1\r\n",  request::BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("( uri HTTP/1.1\r\n",   request::BadMethod, "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n");
 }
 
 /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 TEST(module_www, server_bigUri)
 {
-    PLAY_2_FAIL("METH " + std::string(8193, 'x'), TooBigUri, "HTTP/1.1 414 URI Too Long\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("METH " + std::string(8193, 'x'), request::TooBigUri, "HTTP/1.1 414 URI Too Long\r\nConnection: close\r\n\r\n");
 }
 
 /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 TEST(module_www, server_bigVersion)
 {
-    PLAY_2_FAIL("GET uri HTTP/012345678901\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/012345678901\r\n", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
 }
 
 /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 TEST(module_www, server_badRequestByVersion)
 {
-    PLAY_2_FAIL("GET uri \t\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri 0123\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri \x01\xd4\x10\x21\x02\x02\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri HTTZ/1.1\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri http/1.1\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri http/1.1\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri \t\r\n",                       request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri 0123\r\n",                     request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri \x01\xd4\x10\x21\x02\x02\r\n", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTZ/1.1\r\n",                 request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri http/1.1\r\n",                 request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri http/1.1\r\n",                 request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
 }
 
 /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 TEST(module_www, server_badVersion)
 {
-    PLAY_2_FAIL("GET uri HTTP/\x00\x01\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri HTTP/\x01\x21\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri HTTP/\x02\x01\x01\x01\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri HTTP/\x07\x07\x07\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/\x00\x01\r\n",        request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/\x01\x21\r\n",        request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/\x02\x01\x01\x01\r\n",request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/\x07\x07\x07\r\n",    request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
 
-    PLAY_2_FAIL("GET uri HTTP/0.1\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri HTTP/1.4\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri HTTP/17.1\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri HTTP/2.1\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri HTTP/3.1\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/0.1\r\n", request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.4\r\n", request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/17.1\r\n",request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/2.1\r\n", request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/3.1\r\n", request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
 
-    // PLAY_2_FAIL("GET uri HTTP/0.9\r\n\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
-    // PLAY_2_FAIL("GET uri HTTP/1.0\r\n\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
-    // PLAY_2_FAIL("GET uri HTTP/1.1\r\n\r\n", BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
+    // PLAY_2_FAIL("GET uri HTTP/0.9\r\n\r\n", request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
+    // PLAY_2_FAIL("GET uri HTTP/1.0\r\n\r\n", request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
+    // PLAY_2_FAIL("GET uri HTTP/1.1\r\n\r\n", request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
 }
 
 /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 TEST(module_www, server_badHeaderKey)
 {
-    PLAY_2_FAIL("GET uri HTTP/1.1\r\n" + std::string(65, 'x') + ": xyz\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\n" + std::string(65, 'x') + ": xyz\r\n", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
 
-    PLAY_2_FAIL("GET uri HTTP/1.1\r\n: xyz\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri HTTP/1.1\r\nxyz\r\n:\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri HTTP/1.1\r\nhea der: xyz\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri HTTP/1.1\r\nh e a d e r: xyz\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri HTTP/1.1\r\nheader\x00: xyz\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri HTTP/1.1\r\n\x00header: xyz\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
-    PLAY_2_FAIL("GET uri HTTP/1.1\r\n\x00: xyz\r\n", BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\n: xyz\r\n",            request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nxyz\r\n:\r\n",         request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nhea der: xyz\r\n",     request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nh e a d e r: xyz\r\n", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nheader\x00: xyz\r\n",  request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\n\x00header: xyz\r\n",  request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\n\x00: xyz\r\n",        request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
 }
 
 /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 TEST(module_www, server_badHeaderValue)
 {
-    PLAY_2_FAIL("GET uri HTTP/1.1\r\nh:" + std::string(8193, 'v') + "\r\n", TooBigHeaders, "HTTP/1.1 431 Request Header Fields Too Large\r\nConnection: close\r\n\r\n");
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nh:" + std::string(8193, 'v') + "\r\n", request::TooBigHeaders, "HTTP/1.1 431 Request Header Fields Too Large\r\nConnection: close\r\n\r\n");
 
     {
         std::string hdr = "h:" + std::string(4096, 'v') + "\r\n";
-        PLAY_2_FAIL("GET uri HTTP/1.1\r\n" + hdr + hdr + hdr + hdr + hdr + hdr + hdr + hdr + "\r\n", TooBigHeaders, "HTTP/1.1 431 Request Header Fields Too Large\r\nConnection: close\r\n\r\n");
+        PLAY_2_FAIL("GET uri HTTP/1.1\r\n" + hdr + hdr + hdr + hdr + hdr + hdr + hdr + hdr + "\r\n", request::TooBigHeaders, "HTTP/1.1 431 Request Header Fields Too Large\r\nConnection: close\r\n\r\n");
     }
 }
 

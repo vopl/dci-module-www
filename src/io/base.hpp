@@ -24,10 +24,8 @@ namespace dci::module::www::io
         void setApi(Api&& api);
 
     public:
-        void onFailed(primitives::ExceptionPtr);
-        void onClosed();
-        void closeByApi();
-        void close(primitives::ExceptionPtr);
+        void fireFailed(primitives::ExceptionPtr);
+        void fireClosed(bool andReset = true);
 
     protected:
         Support*    _support{};

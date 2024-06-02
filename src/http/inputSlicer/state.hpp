@@ -24,7 +24,8 @@ namespace dci::module::www::http::inputSlicer::state
         Accumuler<std::string, 8192>    _uri;
         Accumuler<std::array<char, 16>> _version;
 
-        void reset();
+        std::optional<api::http::firstLine::Method>     _parsedMethod;
+        std::optional<api::http::firstLine::Version>    _parsedVersion;
     };
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
@@ -39,34 +40,63 @@ namespace dci::module::www::http::inputSlicer::state
         std::uint16_t                   _statusCode{};
         std::uint16_t                   _statusCodeCharsCount{};
         Accumuler<std::string, 64>      _statusText;
-
-        void reset();
     };
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    struct Header
+    struct BodyRelatedHeaders
     {
-        Accumuler<std::array<char, 64>> _key;
-        Accumuler<std::string, 8192>    _value;
-
-        enum class Kind
+        enum class Portionality
         {
-            unknown,
-            regular,
-            valueContinue,
-            empty
-        } _kind{};
+            null,
+            byContentLength,
+            byConnectionClose,
+            chunked,
+        } _portionality{};
 
-        void reset();
+        enum class Compression
+        {
+            identity,
+            compress,
+            deflate,
+            gzip,
+            br,
+            zstd,
+        } _compression{};
+
+        Opt<uint64>         _bodyContentLength{};
+        bool                _trailersFollows{};
+    };
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    struct Headers : BodyRelatedHeaders
+    {
+        struct Current
+        {
+            Accumuler<std::array<char, 64>> _key;
+            Accumuler<std::string, 8192>    _value;
+
+            enum class Kind
+            {
+                unknown,
+                regular,
+                valueContinue,
+                empty
+            } _kind{};
+
+            void reset();
+        } _current;
+
+        primitives::List<api::http::Header> _accumuled;
+        std::size_t                         _cumulativeValueSize{};
+        bool                                _allowValueContinue{};
     };
     constexpr std::size_t _maxEntityHeaders{256};
     constexpr std::size_t _maxEntityHeaderValueSize{32768};
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    struct Body
+    struct Body : BodyRelatedHeaders
     {
-        bool _trailersFollows{};
-
-        void reset();
+        using BodyRelatedHeaders::operator=;
+        Bytes   _accumuled;
     };
 }

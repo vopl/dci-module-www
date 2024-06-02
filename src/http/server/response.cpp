@@ -17,7 +17,7 @@ namespace dci::module::www::http::server
         : Base{support, std::move(api)}
     {
         // in firstLine(firstLine::Method, string path, firstLine::Version);
-        _api.methods()->firstLine() += _sol * [this](api::http::firstLine::Version version, api::http::firstLine::StatusCode statusCode, primitives::String&& statusText)
+        _api.methods()->firstLine() += _sol * [this](api::http::firstLine::Version /*version*/, api::http::firstLine::StatusCode /*statusCode*/, primitives::String&& /*statusText*/)
         {
             dbgFatal("not impl");
             // bytes::Alter out{_buffer.end()};
@@ -40,7 +40,7 @@ namespace dci::module::www::http::server
         };
 
         // in headers(list<Header>, bool done);
-        _api.methods()->headers() += _sol * [this](const primitives::List<api::http::Header>& headers, bool done)
+        _api.methods()->headers() += _sol * [this](const primitives::List<api::http::Header>& /*headers*/, bool /*done*/)
         {
             dbgFatal("not impl");
             // {

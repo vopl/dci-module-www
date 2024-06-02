@@ -32,5 +32,6 @@ scope www::http
         }
 
         exception DownstreamFailed : Error {}
+        exception BadInput : Error {}
     }
 }

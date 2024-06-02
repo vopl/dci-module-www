@@ -29,9 +29,7 @@ namespace dci::module::www::io
         // in close();
         _api.methods()->close() += _sol * [this]()
         {
-            _sol.flush();
-            _api.reset();
-            this->closeByApi();
+            _support->apiWantClose(static_cast<Impl*>(this));
         };
     }
 
@@ -65,48 +63,31 @@ namespace dci::module::www::io
         // in close();
         _api.methods()->close() += _sol * [this]()
         {
-            _sol.flush();
-            _api.reset();
-            this->closeByApi();
+            _support->apiWantClose(static_cast<Impl*>(this));
         };
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <class Support, class Impl, class Api>
-    void Base<Support, Impl, Api>::onFailed(primitives::ExceptionPtr e)
+    void Base<Support, Impl, Api>::fireFailed(primitives::ExceptionPtr e)
     {
-        _sol.flush();
         if(_api)
-        {
             _api->failed(std::move(e));
-            _api->closed();
-            _api.reset();
-        }
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <class Support, class Impl, class Api>
-    void Base<Support, Impl, Api>::onClosed()
+    void Base<Support, Impl, Api>::fireClosed(bool andReset)
     {
-        _sol.flush();
+        if(andReset)
+            _sol.flush();
+
         if(_api)
         {
             _api->closed();
-            _api.reset();
+
+            if(andReset)
+                _api.reset();
         }
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <class Support, class Impl, class Api>
-    void Base<Support, Impl, Api>::closeByApi()
-    {
-        _support->closeInput();
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <class Support, class Impl, class Api>
-    void Base<Support, Impl, Api>::close(primitives::ExceptionPtr e)
-    {
-        _support->closeInput(std::move(e));
     }
 }

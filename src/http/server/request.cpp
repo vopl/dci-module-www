@@ -9,7 +9,6 @@
 #include "request.hpp"
 #include "response.hpp"
 #include "channel.hpp"
-#include "../../enumSupport.hpp"
 
 namespace dci::module::www::http::server
 {
@@ -46,17 +45,19 @@ namespace dci::module::www::http::server
         {
         case inputSlicer::Result::needMore:
             dbgAssert(data.atBegin() && data.atEnd());
-            if(hasDetacheableHeadersAccumuled(true))
-                _api->headers(detachHeadersAccumuled(true), false);
+            if(hasDetacheableHeadersAccumuled())
+                _api->headers(detachHeadersAccumuled(), false);
+            if(hasDetacheableBodyAccumuled())
+                _api->data(detachBodyAccumuled(), false);
             return io::InputProcessResult::needMore;
 
         case inputSlicer::Result::done:
             _response = nullptr;
+            reset();
             if(_api)
             {
                 _api->done();
                 _api.reset();
-                reset();
             }
             return io::InputProcessResult::done;
 
@@ -90,7 +91,7 @@ namespace dci::module::www::http::server
         }
 
         _response->requestFailed(inputSlicerResult);
-        close(std::move(err4Fail));
+        _support->failed(this, std::move(err4Fail));
 
         return io::InputProcessResult::bad;
     }
@@ -110,50 +111,41 @@ namespace dci::module::www::http::server
     {
         //std::cout << "[" << firstLine._method <<"][" << firstLine._uri << "][" << firstLine._version << "]" << std::endl;
 
-        std::optional<api::http::firstLine::Method> method = enumSupport::toEnum<api::http::firstLine::Method>(firstLine._method.str());
-        if(!method)
-            return inputSlicer::Result::badMethod;
+        inputSlicer::Result res = IS::sliceDone(firstLine);
 
-        if( firstLine._version._size < 5 ||
-            firstLine._version._downstream[0] != 'H' ||
-            firstLine._version._downstream[1] != 'T' ||
-            firstLine._version._downstream[2] != 'T' ||
-            firstLine._version._downstream[3] != 'P' ||
-            firstLine._version._downstream[4] != '/'
-        )
-            return inputSlicer::Result::badEntity;
+        if(inputSlicer::Result::done == res)
+            _api->firstLine(*firstLine._parsedMethod, std::move(firstLine._uri._downstream), *firstLine._parsedVersion);
 
-        std::optional<api::http::firstLine::Version> version = enumSupport::toEnum<api::http::firstLine::Version>(firstLine._version.str());
-        if(!version)
-            return inputSlicer::Result::badVersion;
-
-        _api->firstLine(*method, std::move(firstLine._uri._downstream), *version);
-        return inputSlicer::Result::done;
+        return res;
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    inputSlicer::Result Request::sliceDone(inputSlicer::state::Header& header)
+    inputSlicer::Result Request::sliceDone(inputSlicer::state::Headers& headers)
     {
         // if(header._empty)
         //     std::cout << "[" << header._key <<"][" << header._value << "]" << std::endl;
         // else
         //     std::cout << "[" << header._key <<"][" << header._value << "]" << std::endl;
 
-        if(inputSlicer::state::Header::Kind::empty == header._kind)
-        {
-            _api->headers(IS::detachHeadersAccumuled(false), true);
-            return inputSlicer::Result::done;
-        }
+        inputSlicer::Result res = IS::sliceDone(headers);
 
-        return IS::sliceDone(header);
+        if(inputSlicer::Result::done == res)
+            _api->headers(IS::detachHeadersAccumuled(), true);
+
+        return res;
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    inputSlicer::Result Request::sliceDone(inputSlicer::state::Body& /*body*/)
+    inputSlicer::Result Request::sliceDone(inputSlicer::state::Body& body)
     {
-        std::cout << "some body" << std::endl;
-        //_api->data(xxx);
-        return inputSlicer::Result::done;
+        // std::cout << "some body" << std::endl;
+
+        inputSlicer::Result res = IS::sliceDone(body);
+
+        if(inputSlicer::Result::done == res)
+            _api->data(IS::detachBodyAccumuled(), true);
+
+        return res;
     }
 
 }

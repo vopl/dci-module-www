@@ -33,8 +33,12 @@ namespace dci::module::www::io
         void done(OutputImpl* output);
         void write(Bytes data);
 
+        void apiWantClose(OutputImpl* output);
+        void apiWantClose(InputImpl* input);
+
+        void failed(InputImpl* input, primitives::ExceptionPtr e);
+
     public:
-        void closeInput(primitives::ExceptionPtr e = {});
         void close(primitives::ExceptionPtr e = {});
 
         sbs::Owner _sol;

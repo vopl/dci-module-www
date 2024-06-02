@@ -26,13 +26,16 @@ namespace dci::module::www::http
         void reset();
         inputSlicer::Result process(inputSlicer::SourceAdapter& sa);
 
-        bool hasDetacheableHeadersAccumuled(bool keepLast) const;
-        primitives::List<api::http::Header> detachHeadersAccumuled(bool keepLast);
+        bool hasDetacheableHeadersAccumuled() const;
+        primitives::List<api::http::Header> detachHeadersAccumuled();
+
+        bool hasDetacheableBodyAccumuled() const;
+        Bytes detachBodyAccumuled();
 
     protected:
         inputSlicer::Result sliceStart();
-        inputSlicer::Result sliceDone(const inputSlicer::state::RequestFirstLine& firstLine) = delete;
-        inputSlicer::Result sliceDone(inputSlicer::state::Header& header);
+        inputSlicer::Result sliceDone(inputSlicer::state::RequestFirstLine& firstLine);
+        inputSlicer::Result sliceDone(inputSlicer::state::Headers& headers);
         inputSlicer::Result sliceDone(inputSlicer::state::Body& body);
 
     private:
@@ -71,7 +74,7 @@ namespace dci::module::www::http
             requestFirstLine,
             responseNull,
             responseFirstLine,
-            header,
+            headers,
             body,
         } _activeState;
 
@@ -81,7 +84,7 @@ namespace dci::module::www::http
             inputSlicer::state::RequestFirstLine    _requestFirstLine;
             inputSlicer::state::ResponseNull        _responseNull;
             inputSlicer::state::ResponseFirstLine   _responseFirstLine;
-            inputSlicer::state::Header              _header;
+            inputSlicer::state::Headers             _headers;
             inputSlicer::state::Body                _body;
         };
 
@@ -90,33 +93,6 @@ namespace dci::module::www::http
 
         template <class S>
         const S& state() const;
-
-    private:
-        primitives::List<api::http::Header> _headersAccumuled;
-        std::size_t                         _headersValueSize{};
-
-    private:
-        enum class BodyPortionality
-        {
-            null,
-            byContentLength,
-            byConnectionClose,
-            chunked,
-        };
-
-        enum class BodyCompression
-        {
-            identity,
-            compress,
-            deflate,
-            gzip,
-            br,
-            zstd,
-        };
-
-        primitives::Opt<uint32> _bodyContentLength{};
-        BodyPortionality        _bodyPortionality{};
-        BodyCompression         _bodyCompression{};
     };
 }
 
