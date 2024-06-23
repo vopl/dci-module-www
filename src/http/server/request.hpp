@@ -36,9 +36,9 @@ namespace dci::module::www::http::server
     private:
         friend IS;
         inputSlicer::Result sliceStart();
-        inputSlicer::Result sliceDone(inputSlicer::state::RequestFirstLine& firstLine);
-        inputSlicer::Result sliceDone(inputSlicer::state::Headers& headers);
-        inputSlicer::Result sliceDone(inputSlicer::state::Body& body);
+        inputSlicer::Result sliceFlush(inputSlicer::state::RequestFirstLine& firstLine);
+        inputSlicer::Result sliceFlush(inputSlicer::state::Headers& headers, bool done);
+        inputSlicer::Result sliceFlush(inputSlicer::state::Body& body, bool done);
 
     private:
         Response* _response{};

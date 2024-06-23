@@ -45,10 +45,6 @@ namespace dci::module::www::http::server
         {
         case inputSlicer::Result::needMore:
             dbgAssert(data.atBegin() && data.atEnd());
-            if(hasDetacheableHeadersAccumuled())
-                _api->headers(detachHeadersAccumuled(), false);
-            if(hasDetacheableBodyAccumuled())
-                _api->data(detachBodyAccumuled(), false);
             return io::InputProcessResult::needMore;
 
         case inputSlicer::Result::done:
@@ -107,45 +103,32 @@ namespace dci::module::www::http::server
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    inputSlicer::Result Request::sliceDone(inputSlicer::state::RequestFirstLine& firstLine)
+    inputSlicer::Result Request::sliceFlush(inputSlicer::state::RequestFirstLine& firstLine)
     {
         //std::cout << "[" << firstLine._method <<"][" << firstLine._uri << "][" << firstLine._version << "]" << std::endl;
-
-        inputSlicer::Result res = IS::sliceDone(firstLine);
-
-        if(inputSlicer::Result::done == res)
-            _api->firstLine(*firstLine._parsedMethod, std::move(firstLine._uri._downstream), *firstLine._parsedVersion);
-
-        return res;
+        _api->firstLine(*firstLine._parsedMethod, std::move(firstLine._uri._downstream), *firstLine._parsedVersion);
+        return IS::sliceFlush(firstLine);
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    inputSlicer::Result Request::sliceDone(inputSlicer::state::Headers& headers)
+    inputSlicer::Result Request::sliceFlush(inputSlicer::state::Headers& headers, bool done)
     {
         // if(header._empty)
         //     std::cout << "[" << header._key <<"][" << header._value << "]" << std::endl;
         // else
         //     std::cout << "[" << header._key <<"][" << header._value << "]" << std::endl;
 
-        inputSlicer::Result res = IS::sliceDone(headers);
-
-        if(inputSlicer::Result::done == res)
-            _api->headers(IS::detachHeadersAccumuled(), true);
-
-        return res;
+        _api->headers(headers._conveyor.detachSome(), done);
+        return IS::sliceFlush(headers, done);
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    inputSlicer::Result Request::sliceDone(inputSlicer::state::Body& body)
+    inputSlicer::Result Request::sliceFlush(inputSlicer::state::Body& body, bool done)
     {
         // std::cout << "some body" << std::endl;
 
-        inputSlicer::Result res = IS::sliceDone(body);
+        _api->data(std::exchange(body._content, {}), done);
 
-        if(inputSlicer::Result::done == res)
-            _api->data(IS::detachBodyAccumuled(), true);
-
-        return res;
+        return IS::sliceFlush(body, done);
     }
-
 }

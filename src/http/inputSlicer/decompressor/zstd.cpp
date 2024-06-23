@@ -5,22 +5,15 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#pragma once
-#include <dci/host/module/entry.hpp>
-#include <dci/cmt.hpp>
-#include <dci/exception.hpp>
-#include <dci/poll/timeout.hpp>
-#include <dci/utils/atScopeExit.hpp>
-#include <dci/utils/overloaded.hpp>
-#include <dci/utils/compiler.hpp>
+#include "pch.hpp"
+#include "zstd.hpp"
 
-#include <bit>
-#include <deque>
-#include <string_view>
-#include "www.hpp"
-
-namespace dci::module::www
+namespace dci::module::www::http::inputSlicer::decompressor
 {
-    namespace api = dci::idl::www;
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    Bytes Zstd::exec(Bytes&& content, bool /*flush*/)
+    {
+        dbgFatal("not impl");
+        return std::move(content);
+    }
 }
-

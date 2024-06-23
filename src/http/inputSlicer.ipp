@@ -12,6 +12,8 @@
 #include "inputSlicer/accumuleUntil.hpp"
 #include "../enumSupport.hpp"
 
+using namespace std::literals;
+
 namespace
 {
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
@@ -120,71 +122,6 @@ namespace dci::module::www::http
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <inputSlicer::Mode mode, class Derived>
-    bool InputSlicer<mode, Derived>::hasDetacheableHeadersAccumuled() const
-    {
-        if(ActiveState::headers != _activeState)
-            return false;
-
-        const inputSlicer::state::Headers& stateHeaders = state<inputSlicer::state::Headers>();
-
-        if(stateHeaders._allowValueContinue)
-            return stateHeaders._accumuled.size() > 1;
-
-        return !stateHeaders._accumuled.empty();
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <inputSlicer::Mode mode, class Derived>
-    primitives::List<api::http::Header> InputSlicer<mode, Derived>::detachHeadersAccumuled()
-    {
-        if(ActiveState::headers != _activeState)
-            return {};
-
-        inputSlicer::state::Headers& stateHeaders = state<inputSlicer::state::Headers>();
-
-        if(stateHeaders._allowValueContinue)
-        {
-            if(stateHeaders._accumuled.size() < 2)
-                return {};
-
-            primitives::List<api::http::Header> detach;
-            detach.swap(stateHeaders._accumuled);
-
-            stateHeaders._accumuled.emplace_back(std::move(detach.front()));
-            detach.pop_front();
-
-            return std::exchange(detach, {});
-        }
-
-        return std::exchange(stateHeaders._accumuled, {});
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <inputSlicer::Mode mode, class Derived>
-    bool InputSlicer<mode, Derived>::hasDetacheableBodyAccumuled() const
-    {
-        if(ActiveState::body != _activeState)
-            return {};
-
-        const inputSlicer::state::Body& stateBody = state<inputSlicer::state::Body>();
-
-        return !stateBody._accumuled.empty();
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <inputSlicer::Mode mode, class Derived>
-    Bytes InputSlicer<mode, Derived>::detachBodyAccumuled()
-    {
-        if(ActiveState::body != _activeState)
-            return {};
-
-        inputSlicer::state::Body& stateBody = state<inputSlicer::state::Body>();
-
-        return std::exchange(stateBody._accumuled, {});
-    }
-
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    template <inputSlicer::Mode mode, class Derived>
     inputSlicer::Result InputSlicer<mode, Derived>::sliceStart()
     {
         //empty is okay
@@ -193,155 +130,23 @@ namespace dci::module::www::http
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <inputSlicer::Mode mode, class Derived>
-    inputSlicer::Result InputSlicer<mode, Derived>::sliceDone(inputSlicer::state::RequestFirstLine& firstLine)
+    inputSlicer::Result InputSlicer<mode, Derived>::sliceFlush(inputSlicer::state::RequestFirstLine& /*firstLine*/)
     {
-        firstLine._parsedMethod = enumSupport::toEnum<api::http::firstLine::Method>(firstLine._method.str());
-        if(!firstLine._parsedMethod)
-            return inputSlicer::Result::badMethod;
-
-        if( firstLine._version._size < 5 ||
-            firstLine._version._downstream[0] != 'H' ||
-            firstLine._version._downstream[1] != 'T' ||
-            firstLine._version._downstream[2] != 'T' ||
-            firstLine._version._downstream[3] != 'P' ||
-            firstLine._version._downstream[4] != '/'
-        )
-            return inputSlicer::Result::badEntity;
-
-        firstLine._parsedVersion = enumSupport::toEnum<api::http::firstLine::Version>(firstLine._version.str());
-        if(!firstLine._parsedVersion)
-            return inputSlicer::Result::badVersion;
-
         return inputSlicer::Result::done;
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <inputSlicer::Mode mode, class Derived>
-    inputSlicer::Result InputSlicer<mode, Derived>::sliceDone(inputSlicer::state::Headers& headers)
+    inputSlicer::Result InputSlicer<mode, Derived>::sliceFlush(inputSlicer::state::Headers& /*headers*/, bool done)
     {
-        switch(headers._current._kind)
-        {
-        case inputSlicer::state::Headers::Current::Kind::unknown:
-            dbgAssert("unparsed header declated as sliced");
-            return inputSlicer::Result::badEntity;
-
-        case inputSlicer::state::Headers::Current::Kind::regular:
-            {
-                if(inputSlicer::state::_maxEntityHeaders <= headers._accumuled.size())
-                    return inputSlicer::Result::tooBigHeaders;
-
-                if(!headers._current._key._size)
-                    return inputSlicer::Result::badEntity;
-
-                for(std::size_t i{}; i<headers._current._key._size; ++i)
-                {
-                    char c = headers._current._key._downstream[i];
-                    switch(c)
-                    {
-                    case '(':
-                    case ')':
-                    case '<':
-                    case '>':
-                    case '@':
-                    case ',':
-                    case ';':
-                    case ':':
-                    case '\\':
-                    case '"':
-                    case '/':
-                    case '[':
-                    case ']':
-                    case '?':
-                    case '=':
-                    case '{':
-                    case '}':
-                        return inputSlicer::Result::badEntity;
-                    default:
-                        if(32 >= c || 127 == c)
-                            return inputSlicer::Result::badEntity;
-                    }
-                }
-
-                rtrim(headers._current._value._downstream);
-                headers._cumulativeValueSize += headers._current._value._downstream.size();
-                if(inputSlicer::state::_maxEntityHeaderValueSize <= headers._cumulativeValueSize)
-                    return inputSlicer::Result::tooBigHeaders;
-
-                std::optional<api::http::header::KeyRecognized> keyRecognized = enumSupport::toEnum<api::http::header::KeyRecognized>(headers._current._key.str());
-                if(keyRecognized)
-                {
-                    switch(*keyRecognized)
-                    {
-                    case api::http::header::KeyRecognized::Content_Length:
-                        headers._allowValueContinue = false;
-                        dbgFatal("not impl");
-                        break;
-                    case api::http::header::KeyRecognized::Content_Encoding:
-                        headers._allowValueContinue = false;
-                        dbgFatal("not impl");
-                        break;
-                    case api::http::header::KeyRecognized::Transfer_Encoding:
-                        headers._allowValueContinue = false;
-                        dbgFatal("not impl");
-                        break;
-                    case api::http::header::KeyRecognized::Content_Transfer_Encoding:
-                        headers._allowValueContinue = false;
-                        dbgFatal("not impl");
-                        break;
-                    case api::http::header::KeyRecognized::Connection:
-                        headers._allowValueContinue = false;
-                        dbgFatal("not impl");
-                        break;
-                    case api::http::header::KeyRecognized::Trailer:
-                        headers._allowValueContinue = false;
-                        dbgFatal("not impl");
-                        break;
-                    default:
-                        headers._allowValueContinue = true;
-                        break;
-                    }
-
-                    headers._accumuled.emplace_back(*keyRecognized, std::move(headers._current._value._downstream));
-                }
-                else
-                {
-                    headers._allowValueContinue = true;
-                    headers._accumuled.emplace_back(api::http::header::KeyAny{headers._current._key.str()}, std::move(headers._current._value._downstream));
-                }
-            }
-            return inputSlicer::Result::needMore;
-
-        case inputSlicer::state::Headers::Current::Kind::valueContinue:
-            {
-                dbgAssert(headers._current._key.empty());
-                if(!headers._allowValueContinue || headers._accumuled.empty())
-                    return inputSlicer::Result::badEntity;
-
-                std::string& value = headers._accumuled.back().value;
-                std::string addition = trim(std::move(headers._current._value._downstream));
-
-                std::size_t totalValueSize = value.size() + 1 + addition.size();
-                if(totalValueSize > decltype(headers._current._value)::_limit)
-                    return inputSlicer::Result::tooBigHeaders;
-
-                value.reserve(totalValueSize);
-                value += ' ';
-                value += std::move(addition);
-            }
-            return inputSlicer::Result::needMore;
-
-        case inputSlicer::state::Headers::Current::Kind::empty:
-            return inputSlicer::Result::done;
-        }
-
-        return inputSlicer::Result::done;
+        return done ? inputSlicer::Result::done : inputSlicer::Result::needMore;
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <inputSlicer::Mode mode, class Derived>
-    inputSlicer::Result InputSlicer<mode, Derived>::sliceDone(inputSlicer::state::Body& /*body*/)
+    inputSlicer::Result InputSlicer<mode, Derived>::sliceFlush(inputSlicer::state::Body& /*body*/, bool done)
     {
-        return inputSlicer::Result::done;
+        return done ? inputSlicer::Result::done : inputSlicer::Result::needMore;
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
@@ -389,8 +194,8 @@ namespace dci::module::www::http
         if(inputSlicer::Result::done != result)
             return result;
 
-        _procesor = &InputSlicer::firstLineCR;
-        return firstLineCR(sa);
+        _procesor = &InputSlicer::firstLineLF;
+        return firstLineLF(sa);
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
@@ -422,20 +227,22 @@ namespace dci::module::www::http
     template <inputSlicer::Mode mode, class Derived>
     inputSlicer::Result InputSlicer<mode, Derived>::responseFirstLineStatusCode(inputSlicer::SourceAdapter& sa) requires (inputSlicer::Mode::response == mode)
     {
+        inputSlicer::SourceAdapter::ForHdr& saForHdr = sa.forHdr();
+
         inputSlicer::state::ResponseFirstLine& stateResponseFirstLine = state<inputSlicer::state::ResponseFirstLine>();
         while(stateResponseFirstLine._statusCodeCharsCount < 4)
         {
-            if(sa.empty())
+            if(saForHdr.empty())
                 return inputSlicer::Result::needMore;
 
-            char c = sa.front();
+            char c = saForHdr.front();
 
             if(stateResponseFirstLine._statusCodeCharsCount < 3)
             {
                 if('9' < c || '0' > c)
                     return inputSlicer::Result::badStatus;
 
-                sa.dropFront(1);
+                saForHdr.dropFront(1);
                 stateResponseFirstLine._statusCode *= 10;
                 stateResponseFirstLine._statusCode += c - '0';
                 ++stateResponseFirstLine._statusCodeCharsCount;
@@ -445,7 +252,7 @@ namespace dci::module::www::http
                 if(!isspace(c))
                     return inputSlicer::Result::badStatus;
 
-                sa.dropFront(1);
+                saForHdr.dropFront(1);
                 ++stateResponseFirstLine._statusCodeCharsCount;
                 break;
             }
@@ -463,65 +270,95 @@ namespace dci::module::www::http
         if(inputSlicer::Result::done != result)
             return result;
 
-        _procesor = &InputSlicer::firstLineCR;
-        return firstLineCR(sa);
+        _procesor = &InputSlicer::firstLineLF;
+        return firstLineLF(sa);
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <inputSlicer::Mode mode, class Derived>
-    inputSlicer::Result InputSlicer<mode, Derived>::firstLineCR(inputSlicer::SourceAdapter& sa)
+    inputSlicer::Result InputSlicer<mode, Derived>::firstLineLF(inputSlicer::SourceAdapter& sa)
     {
-        if(sa.empty())
+        inputSlicer::SourceAdapter::ForHdr& saForHdr = sa.forHdr();
+
+        if(saForHdr.empty())
             return inputSlicer::Result::needMore;
 
-        if('\n' != sa.front())
+        if('\n' != saForHdr.front())
             return inputSlicer::Result::badEntity;
 
-        sa.dropFront(1);
+        saForHdr.dropFront(1);
 
         inputSlicer::Result result;
         if constexpr(inputSlicer::Mode::request == mode)
-            result = static_cast<Derived*>(this)->sliceDone(state<inputSlicer::state::RequestFirstLine>());
-        else
-            result = static_cast<Derived*>(this)->sliceDone(state<inputSlicer::state::ResponseFirstLine>());
-
-        if(inputSlicer::Result::done == result)
         {
-            state<inputSlicer::state::Headers, false>();
-            _procesor = &InputSlicer::headerPreKey;
-            return headerPreKey(sa);
+            inputSlicer::state::RequestFirstLine& stateFirstLine = state<inputSlicer::state::RequestFirstLine>();
+
+            stateFirstLine._parsedMethod = enumSupport::toEnum<api::http::firstLine::Method>(stateFirstLine._method.str());
+            if(!stateFirstLine._parsedMethod)
+                return inputSlicer::Result::badMethod;
+
+            if( stateFirstLine._version._size < 5 ||
+                stateFirstLine._version._downstream[0] != 'H' ||
+                stateFirstLine._version._downstream[1] != 'T' ||
+                stateFirstLine._version._downstream[2] != 'T' ||
+                stateFirstLine._version._downstream[3] != 'P' ||
+                stateFirstLine._version._downstream[4] != '/'
+            )
+                return inputSlicer::Result::badEntity;
+
+            stateFirstLine._parsedVersion = enumSupport::toEnum<api::http::firstLine::Version>(stateFirstLine._version.str());
+            if(!stateFirstLine._parsedVersion)
+                return inputSlicer::Result::badVersion;
+
+            result = static_cast<Derived*>(this)->sliceFlush(stateFirstLine);
+        }
+        else
+        {
+            inputSlicer::state::ResponseFirstLine& stateFirstLine = state<inputSlicer::state::ResponseFirstLine>();
+            dbgFatal("not impl");
+            result = static_cast<Derived*>(this)->sliceFlush(stateFirstLine);
         }
 
-        return result;
+        if(inputSlicer::Result::done != result)
+            return result;
+
+        state<inputSlicer::state::Headers, false>();
+        _procesor = &InputSlicer::headerPreKey;
+        return headerPreKey(sa);
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <inputSlicer::Mode mode, class Derived>
     inputSlicer::Result InputSlicer<mode, Derived>::headerPreKey(inputSlicer::SourceAdapter& sa)
     {
+        inputSlicer::SourceAdapter::ForHdr& saForHdr = sa.forHdr();
+
         inputSlicer::state::Headers& stateHeaders = state<inputSlicer::state::Headers>();
         dbgAssert(inputSlicer::state::Headers::Current::Kind::unknown == stateHeaders._current._kind);
 
-        if(sa.empty())
+        if(inputSlicer::state::_maxEntityHeadersCount <= stateHeaders._conveyor._totalHeadersCount)
+            return inputSlicer::Result::tooBigHeaders;
+
+        if(saForHdr.empty())
             return inputSlicer::Result::needMore;
 
-        char c = sa.front();
+        char c = saForHdr.front();
 
         if('\r' == c)
         {
-            sa.dropFront(1);
+            saForHdr.dropFront(1);
             stateHeaders._current._kind = inputSlicer::state::Headers::Current::Kind::empty;
-            stateHeaders._allowValueContinue = false;
-            _procesor = &InputSlicer::headerCR;
-            return headerCR(sa);
+            stateHeaders._conveyor._allowLastValueContinue = false;
+            _procesor = &InputSlicer::headerLF;
+            return headerLF(sa);
         }
 
         if(isspace(c))
         {
-            if(!stateHeaders._allowValueContinue)
+            if(!stateHeaders._conveyor._allowLastValueContinue)
                 return inputSlicer::Result::badEntity;
 
-            sa.dropFront(1);
+            saForHdr.dropFront(1);
             stateHeaders._current._kind = inputSlicer::state::Headers::Current::Kind::valueContinue;
             _procesor = &InputSlicer::headerPreValue;
             return headerPreValue(sa);
@@ -546,6 +383,7 @@ namespace dci::module::www::http
         if(inputSlicer::Result::done != result)
             return result;
 
+        ++stateHeaders._conveyor._totalHeadersCount;
         _procesor = &InputSlicer::headerPreValue;
         return headerPreValue(sa);
     }
@@ -554,14 +392,16 @@ namespace dci::module::www::http
     template <inputSlicer::Mode mode, class Derived>
     inputSlicer::Result InputSlicer<mode, Derived>::headerPreValue(inputSlicer::SourceAdapter& sa)
     {
+        inputSlicer::SourceAdapter::ForHdr& saForHdr = sa.forHdr();
+
         inputSlicer::state::Headers& stateHeaders = state<inputSlicer::state::Headers>();
         dbgAssert(inputSlicer::state::Headers::Current::Kind::regular == stateHeaders._current._kind ||
                   inputSlicer::state::Headers::Current::Kind::valueContinue == stateHeaders._current._kind);
 
-        while(!sa.empty())
+        while(!saForHdr.empty())
         {
-            if(isspace(sa.front()))
-                sa.dropFront(1);
+            if(isspace(saForHdr.front()))
+                saForHdr.dropFront(1);
             else
             {
                 _procesor = &InputSlicer::headerValue;
@@ -583,68 +423,474 @@ namespace dci::module::www::http
         if(inputSlicer::Result::done != result)
             return result;
 
-        _procesor = &InputSlicer::headerCR;
-        return headerCR(sa);
+        _procesor = &InputSlicer::headerLF;
+        return headerLF(sa);
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <inputSlicer::Mode mode, class Derived>
-    inputSlicer::Result InputSlicer<mode, Derived>::headerCR(inputSlicer::SourceAdapter& sa)
+    inputSlicer::Result InputSlicer<mode, Derived>::headerLF(inputSlicer::SourceAdapter& sa)
     {
+        inputSlicer::SourceAdapter::ForHdr& saForHdr = sa.forHdr();
+
         inputSlicer::state::Headers& stateHeaders = state<inputSlicer::state::Headers>();
         dbgAssert(inputSlicer::state::Headers::Current::Kind::unknown != stateHeaders._current._kind);
 
-        if(sa.empty())
+        if(saForHdr.empty())
             return inputSlicer::Result::needMore;
 
-        if('\n' != sa.front())
+        if('\n' != saForHdr.front())
             return inputSlicer::Result::badEntity;
 
-        sa.dropFront(1);
+        saForHdr.dropFront(1);
 
-        inputSlicer::Result result = static_cast<Derived*>(this)->sliceDone(stateHeaders);
+        inputSlicer::Result result{};
+        switch(stateHeaders._current._kind)
+        {
+        case inputSlicer::state::Headers::Current::Kind::unknown:
+            dbgAssert("unparsed header declated as sliced");
+            return inputSlicer::Result::badEntity;
+
+        case inputSlicer::state::Headers::Current::Kind::regular:
+            {
+                if(!stateHeaders._current._key._size)
+                    return inputSlicer::Result::badEntity;
+
+                for(std::size_t i{}; i<stateHeaders._current._key._size; ++i)
+                {
+                    char c = stateHeaders._current._key._downstream[i];
+                    switch(c)
+                    {
+                    case '(':
+                    case ')':
+                    case '<':
+                    case '>':
+                    case '@':
+                    case ',':
+                    case ';':
+                    case ':':
+                    case '\\':
+                    case '"':
+                    case '/':
+                    case '[':
+                    case ']':
+                    case '?':
+                    case '=':
+                    case '{':
+                    case '}':
+                        return inputSlicer::Result::badEntity;
+                    default:
+                        if(32 >= c || 127 == c)
+                            return inputSlicer::Result::badEntity;
+                    }
+                }
+
+                rtrim(stateHeaders._current._value._downstream);
+                stateHeaders._conveyor._totalValueSize += stateHeaders._current._value._downstream.size();
+                if(inputSlicer::state::_maxEntityHeaderValueSize <= stateHeaders._conveyor._totalValueSize)
+                    return inputSlicer::Result::tooBigHeaders;
+
+                std::optional<api::http::header::KeyRecognized> keyRecognized = enumSupport::toEnum<api::http::header::KeyRecognized>(stateHeaders._current._key.str());
+                if(keyRecognized)
+                {
+                    auto split = [](std::string_view str, std::string_view delims, auto f)
+                    {
+                        std::string_view::size_type pos{};
+                        for(;;)
+                        {
+                            std::string_view::size_type next = str.find_first_of(delims, pos);
+                            std::string_view sub = str.substr(pos, next-pos);
+                            if(!sub.empty())
+                                f(sub);
+                            if(std::string_view::npos == next)
+                                break;
+                            pos = next+1;
+                        }
+                    };
+
+                    switch(*keyRecognized)
+                    {
+                    case api::http::header::KeyRecognized::Content_Length:
+                        stateHeaders._conveyor._allowLastValueContinue = false;
+
+                        if( inputSlicer::state::Headers::BodyRelated::Portionality::null == stateHeaders._bodyRelated._portionality ||
+                            inputSlicer::state::Headers::BodyRelated::Portionality::untilClose == stateHeaders._bodyRelated._portionality)
+                        {
+                            stateHeaders._bodyRelated._portionality = inputSlicer::state::Headers::BodyRelated::Portionality::byContentLength;
+                        }
+                        else
+                            return inputSlicer::Result::badEntity;
+
+                        {
+                            const char* txtBegin = stateHeaders._current._value._downstream.data();
+                            const char* txtEnd = txtBegin + stateHeaders._current._value._downstream.size();
+                            auto [prsEnd, ec] = std::from_chars(txtBegin, txtEnd, stateHeaders._bodyRelated._contentLength);
+                            if(ec != std::errc{} || prsEnd != txtEnd)
+                                return inputSlicer::Result::badEntity;
+                        }
+                        break;
+                    case api::http::header::KeyRecognized::Content_Encoding:
+                        stateHeaders._conveyor._allowLastValueContinue = false;
+                        {
+                            bool someBadValue = false;
+                            split(stateHeaders._current._value._downstream, ", "sv, [&](std::string_view part)
+                            {
+                                auto setCompression = [&](inputSlicer::state::Headers::BodyRelated::Compression v)
+                                {
+                                    if(inputSlicer::state::Headers::BodyRelated::Compression::none == stateHeaders._bodyRelated._compression)
+                                        stateHeaders._bodyRelated._compression = v;
+                                    else
+                                        someBadValue = true;
+                                };
+
+                                if("compress"sv == part)
+                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::compress);
+                                else if("deflate"sv == part)
+                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::deflate);
+                                else if("gzip"sv == part)
+                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::gzip);
+                                else if("br"sv == part)
+                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::br);
+                                else if("zstd"sv == part)
+                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::zstd);
+                                else
+                                    someBadValue = true;
+                            });
+
+                            if(someBadValue)
+                                return inputSlicer::Result::badEntity;
+                        }
+                        break;
+                    case api::http::header::KeyRecognized::Transfer_Encoding:
+                        stateHeaders._conveyor._allowLastValueContinue = false;
+                        {
+                            bool someBadValue = false;
+                            split(stateHeaders._current._value._downstream, ", "sv, [&](std::string_view part)
+                            {
+                                auto setCompression = [&](inputSlicer::state::Headers::BodyRelated::Compression v)
+                                {
+                                    if(inputSlicer::state::Headers::BodyRelated::Compression::none == stateHeaders._bodyRelated._compression)
+                                        stateHeaders._bodyRelated._compression = v;
+                                    else
+                                        someBadValue = true;
+                                };
+
+                                if("chunked"sv == part)
+                                {
+                                    if( inputSlicer::state::Headers::BodyRelated::Portionality::null == stateHeaders._bodyRelated._portionality ||
+                                        inputSlicer::state::Headers::BodyRelated::Portionality::untilClose == stateHeaders._bodyRelated._portionality)
+                                    {
+                                        stateHeaders._bodyRelated._portionality = inputSlicer::state::Headers::BodyRelated::Portionality::chunked;
+                                    }
+                                    else
+                                        someBadValue = true;
+                                }
+                                else if("compress"sv == part)
+                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::compress);
+                                else if("deflate"sv == part)
+                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::deflate);
+                                else if("gzip"sv == part)
+                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::gzip);
+                                else if("br"sv == part)
+                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::br);
+                                else if("zstd"sv == part)
+                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::zstd);
+                                else
+                                    someBadValue = true;
+                            });
+
+                            if(someBadValue)
+                                return inputSlicer::Result::badEntity;
+                        }
+                        break;
+                    case api::http::header::KeyRecognized::Connection:
+                        stateHeaders._conveyor._allowLastValueContinue = false;
+                        if("close"sv == stateHeaders._current._value._downstream)
+                        {
+                            if(inputSlicer::state::Headers::BodyRelated::Portionality::null == stateHeaders._bodyRelated._portionality)
+                                stateHeaders._bodyRelated._portionality = inputSlicer::state::Headers::BodyRelated::Portionality::untilClose;
+                        }
+                        break;
+                    case api::http::header::KeyRecognized::Trailer:
+                        stateHeaders._conveyor._allowLastValueContinue = false;
+                        split(stateHeaders._current._value._downstream, ", "sv, [&](std::string_view part)
+                        {
+                            stateHeaders._bodyRelated._trailers.emplace(part);
+                        });
+                        break;
+                    default:
+                        stateHeaders._conveyor._allowLastValueContinue = true;
+                        break;
+                    }
+
+                    stateHeaders._conveyor._tail.emplace_back(*keyRecognized, std::move(stateHeaders._current._value._downstream));
+                }
+                else
+                {
+                    stateHeaders._conveyor._allowLastValueContinue = true;
+                    stateHeaders._conveyor._tail.emplace_back(api::http::header::KeyAny{stateHeaders._current._key.str()}, std::move(stateHeaders._current._value._downstream));
+                }
+            }
+            result = inputSlicer::Result::needMore;
+            break;
+
+        case inputSlicer::state::Headers::Current::Kind::valueContinue:
+            {
+                dbgAssert(stateHeaders._current._key.empty());
+                if(!stateHeaders._conveyor._allowLastValueContinue || stateHeaders._conveyor._tail.empty())
+                    return inputSlicer::Result::badEntity;
+
+                std::string& value = stateHeaders._conveyor._tail.back().value;
+                std::string addition = trim(std::move(stateHeaders._current._value._downstream));
+
+                std::size_t totalValueSize = value.size() + 1 + addition.size();
+                if(totalValueSize > decltype(stateHeaders._current._value)::_limit)
+                    return inputSlicer::Result::tooBigHeaders;
+
+                value.reserve(totalValueSize);
+                value += ' ';
+                value += std::move(addition);
+            }
+            result = inputSlicer::Result::needMore;
+            break;
+
+        case inputSlicer::state::Headers::Current::Kind::empty:
+            result = inputSlicer::Result::done;
+            break;
+        }
+
         switch(result)
         {
         case inputSlicer::Result::needMore:
+            if(saForHdr.empty())
+            {
+                result = static_cast<Derived*>(this)->sliceFlush(stateHeaders, false);
+                if(inputSlicer::Result::needMore != result)
+                    return result;
+            }
             stateHeaders._current.reset();
             _procesor = &InputSlicer::headerPreKey;
             return headerPreKey(sa);
 
         case inputSlicer::Result::done:
+            result = static_cast<Derived*>(this)->sliceFlush(stateHeaders, true);
+            if(inputSlicer::Result::done != result)
+                return result;
+
             {
-                inputSlicer::state::BodyRelatedHeaders brh = std::move(stateHeaders);
-                state<inputSlicer::state::Body, false>() = std::move(brh);
-                _procesor = &InputSlicer::body;
-                return body(sa);
+                auto bodySetup = [compression = stateHeaders._bodyRelated._compression, trailers = std::move(stateHeaders._bodyRelated._trailers)](inputSlicer::state::Body& stateBody)
+                {
+                    stateBody._trailers = std::move(trailers);
+                    switch(compression)
+                    {
+                    case inputSlicer::state::Headers::BodyRelated::Compression::none:
+                        stateBody._decompressor.emplace<inputSlicer::decompressor::None>();
+                        break;
+                    case inputSlicer::state::Headers::BodyRelated::Compression::compress:
+                        stateBody._decompressor.emplace<inputSlicer::decompressor::Compress>();
+                        break;
+                    case inputSlicer::state::Headers::BodyRelated::Compression::deflate:
+                        stateBody._decompressor.emplace<inputSlicer::decompressor::Deflate>();
+                        break;
+                    case inputSlicer::state::Headers::BodyRelated::Compression::gzip:
+                        stateBody._decompressor.emplace<inputSlicer::decompressor::Gzip>();
+                        break;
+                    case inputSlicer::state::Headers::BodyRelated::Compression::br:
+                        stateBody._decompressor.emplace<inputSlicer::decompressor::Br>();
+                        break;
+                    case inputSlicer::state::Headers::BodyRelated::Compression::zstd:
+                        stateBody._decompressor.emplace<inputSlicer::decompressor::Zstd>();
+                        break;
+                    }
+                };
+
+                switch(stateHeaders._bodyRelated._portionality)
+                {
+                case inputSlicer::state::Headers::BodyRelated::Portionality::null:
+                case inputSlicer::state::Headers::BodyRelated::Portionality::untilClose:
+                    {
+                        static_cast<Derived*>(this)->_emitDataDoneOnClose = true;
+
+                        bodySetup(state<inputSlicer::state::BodyUntilClose, false>());
+                        _procesor = &InputSlicer::bodyUntilClose;
+                        return bodyUntilClose(sa);
+                    }
+                case inputSlicer::state::Headers::BodyRelated::Portionality::byContentLength:
+                    {
+                        auto contentLength = stateHeaders._bodyRelated._contentLength;
+                        inputSlicer::state::BodyByContentLength& bodyState = state<inputSlicer::state::BodyByContentLength, false>();
+                        bodyState._contentLength = contentLength;
+                        bodySetup(bodyState);
+                        _procesor = &InputSlicer::bodyByContentLength;
+                        return bodyByContentLength(sa);
+                    }
+                case inputSlicer::state::Headers::BodyRelated::Portionality::chunked:
+                    {
+                        bodySetup(state<inputSlicer::state::BodyChunked, false>());
+                        _procesor = &InputSlicer::bodyChunked;
+                        return bodyChunked(sa);
+                    }
+                }
+
+                unreacheable();
             }
 
         default:
-            break;
+            unreacheable();
         }
 
+        unreacheable();
         return result;
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     template <inputSlicer::Mode mode, class Derived>
-    inputSlicer::Result InputSlicer<mode, Derived>::body(inputSlicer::SourceAdapter& sa)
+    inputSlicer::Result InputSlicer<mode, Derived>::bodyUntilClose(inputSlicer::SourceAdapter& sa)
     {
-        inputSlicer::state::Body& stateBody = state<inputSlicer::state::Body>();
+        inputSlicer::state::BodyUntilClose& stateBody = state<inputSlicer::state::BodyUntilClose>();
 
-        dbgFatal("decode/accumule body");
-        sa.dropFront(sa.segmentSize());
+        stateBody._content.end().write(stateBody.decompress(sa.forBody().detach(), true));
 
-        inputSlicer::Result result = static_cast<Derived*>(this)->sliceDone(stateBody);
+        if(!stateBody._content.empty())
+            return static_cast<Derived*>(this)->sliceFlush(stateBody, false);
 
-        if(inputSlicer::Result::done == result && stateBody._trailersFollows)
+        return inputSlicer::Result::needMore;
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    template <inputSlicer::Mode mode, class Derived>
+    inputSlicer::Result InputSlicer<mode, Derived>::bodyByContentLength(inputSlicer::SourceAdapter& sa)
+    {
+        inputSlicer::state::BodyByContentLength& stateBody = state<inputSlicer::state::BodyByContentLength>();
+
+        Bytes content = sa.forBody().detach(stateBody._contentLength);
+        dbgAssert(content.size() <= stateBody._contentLength);
+        stateBody._contentLength -= content.size();
+        bool done = !stateBody._contentLength;
+
+        stateBody._content.end().write(stateBody.decompress(std::move(content), done));
+
+        if(!stateBody._content.empty() || done)
+            return static_cast<Derived*>(this)->sliceFlush(stateBody, done);
+
+        return done ? inputSlicer::Result::done : inputSlicer::Result::needMore;
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    template <inputSlicer::Mode mode, class Derived>
+    inputSlicer::Result InputSlicer<mode, Derived>::bodyChunked(inputSlicer::SourceAdapter& sa)
+    {
+        inputSlicer::state::BodyChunked& stateBody = state<inputSlicer::state::BodyChunked>();
+
+        auto flush = [&](inputSlicer::Result res)
         {
-            dbgFatal("not impl");
-            // state<inputSlicer::state::Headers, false>().reset();
-            // _procesor = &InputSlicer::headerPreKey;
-            // return headerPreKey(sa);
+            bool done = inputSlicer::Result::done == res;
+            if(!stateBody._content.empty() || done)
+                return static_cast<Derived*>(this)->sliceFlush(stateBody, done);
+            return res;
+        };
+
+        for(;;)
+        {
+            switch(stateBody._state)
+            {
+            case inputSlicer::state::BodyChunked::State::null:
+                stateBody._length = 0;
+                stateBody._state = inputSlicer::state::BodyChunked::State::length;
+                break;
+            case inputSlicer::state::BodyChunked::State::length:
+                {
+                    inputSlicer::SourceAdapter::ForHdr& saForHdr = sa.forHdr();
+                    for(;;)
+                    {
+                        if(saForHdr.empty())
+                            return flush(inputSlicer::Result::needMore);
+
+                        char c = saForHdr.front();
+                        if('\r' == c)
+                        {
+                            saForHdr.dropFront(1);
+                            stateBody._state = inputSlicer::state::BodyChunked::State::LF0;
+                            break;
+                        }
+
+                        if(0x10000000 <= stateBody._length)
+                            return inputSlicer::Result::tooBigContent;
+
+                        uint32 digit{};
+                        if('0' <= c && '9' >= c)
+                            digit = c - '0';
+                        else if('a' <= c && 'f' >= c)
+                            digit = c + 10 - 'a';
+                        else if('A' <= c && 'F' >= c)
+                            digit = c + 10 - 'A';
+                        else
+                            return inputSlicer::Result::badEntity;
+
+                        saForHdr.dropFront(1);
+                        stateBody._length <<= 4;
+                        stateBody._length |= digit;
+                    }
+                }
+                break;
+            case inputSlicer::state::BodyChunked::State::LF0:
+                {
+                    inputSlicer::SourceAdapter::ForHdr& saForHdr = sa.forHdr();
+                    if(saForHdr.empty())
+                        return flush(inputSlicer::Result::needMore);
+                    if('\n' != saForHdr.front())
+                        return inputSlicer::Result::badEntity;
+                    saForHdr.dropFront(1);
+                    stateBody._state = stateBody._length ?
+                                           inputSlicer::state::BodyChunked::State::content :
+                                           inputSlicer::state::BodyChunked::State::done;
+                }
+                break;
+            case inputSlicer::state::BodyChunked::State::content:
+                {
+                    Bytes content = sa.forBody().detach(stateBody._length);
+                    dbgAssert(content.size() <= stateBody._length);
+                    stateBody._length -= content.size();
+                    stateBody._content.end().write(stateBody.decompress(std::move(content), false));
+
+                    if(stateBody._length)
+                    {
+                        dbgAssert(sa.forBody().empty());
+                        return flush(inputSlicer::Result::needMore);
+                    }
+
+                    stateBody._state = inputSlicer::state::BodyChunked::State::CR1;
+                }
+                break;
+            case inputSlicer::state::BodyChunked::State::CR1:
+                {
+                    inputSlicer::SourceAdapter::ForHdr& saForHdr = sa.forHdr();
+                    if(saForHdr.empty())
+                        return flush(inputSlicer::Result::needMore);
+                    if('\r' != saForHdr.front())
+                        return inputSlicer::Result::badEntity;
+                    saForHdr.dropFront(1);
+                    stateBody._state = inputSlicer::state::BodyChunked::State::LF1;
+                }
+                break;
+            case inputSlicer::state::BodyChunked::State::LF1:
+                {
+                    inputSlicer::SourceAdapter::ForHdr& saForHdr = sa.forHdr();
+                    if(saForHdr.empty())
+                        return flush(inputSlicer::Result::needMore);
+                    if('\n' != saForHdr.front())
+                        return inputSlicer::Result::badEntity;
+                    saForHdr.dropFront(1);
+                    stateBody._state = inputSlicer::state::BodyChunked::State::null;
+                }
+                break;
+            case inputSlicer::state::BodyChunked::State::done:
+                return flush(inputSlicer::Result::done);
+            }
         }
 
-        return result;
+        unreacheable();
+        return inputSlicer::Result::badEntity;
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
@@ -654,12 +900,14 @@ namespace dci::module::www::http
     {
         if constexpr(optimistic)
         {
-            if constexpr(std::is_same_v<S, inputSlicer::state::RequestNull>)        {dbgAssert(ActiveState::requestNull       == _activeState); return _requestNull;        }
-            if constexpr(std::is_same_v<S, inputSlicer::state::RequestFirstLine>)   {dbgAssert(ActiveState::requestFirstLine  == _activeState); return _requestFirstLine;   }
-            if constexpr(std::is_same_v<S, inputSlicer::state::ResponseNull>)       {dbgAssert(ActiveState::responseNull      == _activeState); return _responseNull;       }
-            if constexpr(std::is_same_v<S, inputSlicer::state::ResponseFirstLine>)  {dbgAssert(ActiveState::responseFirstLine == _activeState); return _responseFirstLine;  }
-            if constexpr(std::is_same_v<S, inputSlicer::state::Headers>)            {dbgAssert(ActiveState::headers           == _activeState); return _headers;            }
-            if constexpr(std::is_same_v<S, inputSlicer::state::Body>)               {dbgAssert(ActiveState::body              == _activeState); return _body;               }
+            if constexpr(std::is_same_v<S, inputSlicer::state::RequestNull>)        {dbgAssert(ActiveState::requestNull         == _activeState); return _requestNull;        }
+            if constexpr(std::is_same_v<S, inputSlicer::state::RequestFirstLine>)   {dbgAssert(ActiveState::requestFirstLine    == _activeState); return _requestFirstLine;   }
+            if constexpr(std::is_same_v<S, inputSlicer::state::ResponseNull>)       {dbgAssert(ActiveState::responseNull        == _activeState); return _responseNull;       }
+            if constexpr(std::is_same_v<S, inputSlicer::state::ResponseFirstLine>)  {dbgAssert(ActiveState::responseFirstLine   == _activeState); return _responseFirstLine;  }
+            if constexpr(std::is_same_v<S, inputSlicer::state::Headers>)            {dbgAssert(ActiveState::headers             == _activeState); return _headers;            }
+            if constexpr(std::is_same_v<S, inputSlicer::state::BodyUntilClose>)     {dbgAssert(ActiveState::bodyUntilClose      == _activeState); return _bodyUntilClose;     }
+            if constexpr(std::is_same_v<S, inputSlicer::state::BodyByContentLength>){dbgAssert(ActiveState::bodyByContentLength == _activeState); return _bodyByContentLength;}
+            if constexpr(std::is_same_v<S, inputSlicer::state::BodyChunked>)        {dbgAssert(ActiveState::bodyChunked         == _activeState); return _bodyChunked;        }
         }
         else
         {
@@ -685,9 +933,17 @@ namespace dci::module::www::http
                 if constexpr(std::is_same_v<S, inputSlicer::state::Headers>)            return _headers;
                 _headers.~Headers();
                 break;
-            case ActiveState::body:
-                if constexpr(std::is_same_v<S, inputSlicer::state::Body>)               return _body;
-                _body.~Body();
+            case ActiveState::bodyUntilClose:
+                if constexpr(std::is_same_v<S, inputSlicer::state::BodyUntilClose>)     return _bodyUntilClose;
+                _bodyUntilClose.~BodyUntilClose();
+                break;
+            case ActiveState::bodyByContentLength:
+                if constexpr(std::is_same_v<S, inputSlicer::state::BodyByContentLength>)return _bodyByContentLength;
+                _bodyByContentLength.~BodyByContentLength();
+                break;
+            case ActiveState::bodyChunked:
+                if constexpr(std::is_same_v<S, inputSlicer::state::BodyChunked>)        return _bodyChunked;
+                _bodyChunked.~BodyChunked();
                 break;
             }
 
@@ -721,10 +977,22 @@ namespace dci::module::www::http
                 return *(new (&_headers) S);
             }
 
-            if constexpr(std::is_same_v<S, inputSlicer::state::Body>)
+            if constexpr(std::is_same_v<S, inputSlicer::state::BodyUntilClose>)
             {
-                _activeState = ActiveState::body;
-                return *(new (&_body) S);
+                _activeState = ActiveState::bodyUntilClose;
+                return *(new (&_bodyUntilClose) S);
+            }
+
+            if constexpr(std::is_same_v<S, inputSlicer::state::BodyByContentLength>)
+            {
+                _activeState = ActiveState::bodyByContentLength;
+                return *(new (&_bodyByContentLength) S);
+            }
+
+            if constexpr(std::is_same_v<S, inputSlicer::state::BodyChunked>)
+            {
+                _activeState = ActiveState::bodyChunked;
+                return *(new (&_bodyChunked) S);
             }
         }
 
@@ -738,16 +1006,17 @@ namespace dci::module::www::http
     template <class S>
     const S& InputSlicer<mode, Derived>::state() const
     {
-        if constexpr(std::is_same_v<S, inputSlicer::state::RequestNull>)        {dbgAssert(ActiveState::requestNull       == _activeState); return _requestNull;        }
-        if constexpr(std::is_same_v<S, inputSlicer::state::RequestFirstLine>)   {dbgAssert(ActiveState::requestFirstLine  == _activeState); return _requestFirstLine;   }
-        if constexpr(std::is_same_v<S, inputSlicer::state::ResponseNull>)       {dbgAssert(ActiveState::responseNull      == _activeState); return _responseNull;       }
-        if constexpr(std::is_same_v<S, inputSlicer::state::ResponseFirstLine>)  {dbgAssert(ActiveState::responseFirstLine == _activeState); return _responseFirstLine;  }
-        if constexpr(std::is_same_v<S, inputSlicer::state::Headers>)            {dbgAssert(ActiveState::headers           == _activeState); return _headers;            }
-        if constexpr(std::is_same_v<S, inputSlicer::state::Body>)               {dbgAssert(ActiveState::body              == _activeState); return _body;               }
+        if constexpr(std::is_same_v<S, inputSlicer::state::RequestNull>)        {dbgAssert(ActiveState::requestNull         == _activeState); return _requestNull;        }
+        if constexpr(std::is_same_v<S, inputSlicer::state::RequestFirstLine>)   {dbgAssert(ActiveState::requestFirstLine    == _activeState); return _requestFirstLine;   }
+        if constexpr(std::is_same_v<S, inputSlicer::state::ResponseNull>)       {dbgAssert(ActiveState::responseNull        == _activeState); return _responseNull;       }
+        if constexpr(std::is_same_v<S, inputSlicer::state::ResponseFirstLine>)  {dbgAssert(ActiveState::responseFirstLine   == _activeState); return _responseFirstLine;  }
+        if constexpr(std::is_same_v<S, inputSlicer::state::Headers>)            {dbgAssert(ActiveState::headers             == _activeState); return _headers;            }
+        if constexpr(std::is_same_v<S, inputSlicer::state::BodyUntilClose>)     {dbgAssert(ActiveState::bodyUntilClose      == _activeState); return _bodyUntilClose;     }
+        if constexpr(std::is_same_v<S, inputSlicer::state::BodyByContentLength>){dbgAssert(ActiveState::bodyByContentLength == _activeState); return _bodyByContentLength;}
+        if constexpr(std::is_same_v<S, inputSlicer::state::BodyChunked>)        {dbgAssert(ActiveState::bodyChunked         == _activeState); return _bodyChunked;        }
 
         unreacheable();
         static S s;
         return s;
     }
-
 }

@@ -88,7 +88,7 @@ TEST(module_www, probe)
             if(!done)
                 return;
 
-            EXPECT_EQ(data, Bytes{"xyz"});
+            EXPECT_EQ(srvData, Bytes{"xyz"});
             EXPECT_TRUE(done);
             srvDataDone.raise();
         };
@@ -108,6 +108,7 @@ TEST(module_www, probe)
                     }, true);
         clnReq->data("xyz", true);
         clnReq->done();
+        cln.reset();
     }
 
     auto wres = cmt::wait(poll::timeout(std::chrono::seconds{1}) || (srvFirstLineDone && srvHeadersDone && srvDataDone));

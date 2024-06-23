@@ -17,4 +17,43 @@ namespace dci::module::www::http::inputSlicer::state
         _value.reset();
         _kind = {};
     }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    bool Headers::Сonveyor::canDetachSome() const
+    {
+        if(_allowLastValueContinue)
+            return _tail.size() > 1;
+
+        return !_tail.empty();
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    primitives::List<api::http::Header> Headers::Сonveyor::detachSome()
+    {
+        if(_allowLastValueContinue)
+        {
+            if(_tail.size() < 2)
+                return {};
+
+            primitives::List<api::http::Header> toDetach;
+            toDetach.swap(_tail);
+
+            _tail.emplace_back(std::move(toDetach.front()));
+            toDetach.pop_front();
+
+            return std::exchange(toDetach, {});
+        }
+
+        return std::exchange(_tail, {});
+
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    Bytes Body::decompress(Bytes&& content, bool flush)
+    {
+        return _decompressor.visit([&](auto& concrete)
+        {
+            return concrete.exec(std::move(content), flush);
+        });
+    }
 }

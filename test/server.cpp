@@ -254,6 +254,13 @@ struct Spectacle
     ASSERT_TRUE(spectacle.has<Spectacle::PeerClosed>());                                    \
     ASSERT_LT(spectacle.pos<Spectacle::PeerData>(), spectacle.pos<Spectacle::PeerClosed>());
 
+#define CHECK_INPUTDATA(data)                                                                \
+    ASSERT_TRUE(spectacle.has<Spectacle::InputData>());                                      \
+    ASSERT_EQ(spectacle.get<Spectacle::InputData>().get<0>(), data);                         \
+    ASSERT_TRUE(spectacle.has<Spectacle::InputDone>());                                      \
+    ASSERT_TRUE(spectacle.has<Spectacle::InputClosed>());                                    \
+    ASSERT_LT(spectacle.pos<Spectacle::InputData>(), spectacle.pos<Spectacle::InputClosed>());
+
 #define PLAY_2_FAIL(req, err, resp) \
     {                               \
         Spectacle spectacle;        \
@@ -354,10 +361,6 @@ TEST(module_www, server_badVersion)
     PLAY_2_FAIL("GET uri HTTP/17.1\r\n",request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
     PLAY_2_FAIL("GET uri HTTP/2.1\r\n", request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
     PLAY_2_FAIL("GET uri HTTP/3.1\r\n", request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
-
-    // PLAY_2_FAIL("GET uri HTTP/0.9\r\n\r\n", request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
-    // PLAY_2_FAIL("GET uri HTTP/1.0\r\n\r\n", request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
-    // PLAY_2_FAIL("GET uri HTTP/1.1\r\n\r\n", request::BadVersion, "HTTP/1.1 505 HTTP Version Not Supported\r\nConnection: close\r\n\r\n");
 }
 
 /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
@@ -385,21 +388,81 @@ TEST(module_www, server_badHeaderValue)
     }
 }
 
-/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-TEST(module_www, server_failChain)
+TEST(module_www, server_bodyUntilClose)
 {
-        Spectacle spectacle;
-        spectacle._peer->send("GET uri HTTP/1.1\r\n\r\n");
-        spectacle.play();
-        spectacle._peer->send("GET uri HTTP/1.1\r\n\r\n");
-        spectacle.play();
-        spectacle._peer->send("GET uri HTTP/1.1\r\n\r\n");
-        spectacle.play();
-        spectacle._peer->send("GET uri HTTP/1.1\r\n\r\n");
-        spectacle.play();
+    Spectacle spectacle;
+    spectacle._peer->send("GET uri HTTP/1.1\r\n\r\n[this is a body]");
+    spectacle.play();
+    spectacle._peer->close();
+    spectacle.play();
 
-        spectacle._peer->send("bad req uest\r\n");
-        spectacle.play();
+    CHECK_IO();
+    CHECK_INPUTDATA("[this is a body]");
+}
 
-        int k = 220;
+TEST(module_www, server_bodyUntilClose2)
+{
+    Spectacle spectacle;
+    spectacle._peer->send("GET uri HTTP/1.1\r\nConnection:  close \r\n\r\n[this is a body]");
+    spectacle.play();
+    spectacle._peer->close();
+    spectacle.play();
+
+    CHECK_IO();
+    CHECK_INPUTDATA("[this is a body]");
+}
+
+TEST(module_www, server_bodyByLength)
+{
+    Spectacle spectacle;
+    spectacle._peer->send("GET uri HTTP/1.1\r\nContent-Length: 16\r\n\r\n[this is a body]extra");
+    spectacle.play();
+    spectacle._peer->close();
+    spectacle.play();
+
+    CHECK_IO();
+    CHECK_INPUTDATA("[this is a body]");
+}
+
+TEST(module_www, server_bodyChunked)
+{
+    Spectacle spectacle;
+    spectacle._peer->send("GET uri HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n10\r\n[this is a body]\r\n0\r\nextra");
+    spectacle.play();
+    spectacle._peer->close();
+    spectacle.play();
+
+    CHECK_IO();
+    CHECK_INPUTDATA("[this is a body]");
+}
+
+TEST(module_www, server_bodyChunked2)
+{
+    Spectacle spectacle;
+    spectacle._peer->send("GET uri HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"
+                          "3\r\n[th\r\n"
+                          "7\r\nis is a\r\n"
+                          "6\r\n body]\r\n"
+                          "0\r\n"
+                          "extra");
+    spectacle.play();
+    spectacle._peer->close();
+    spectacle.play();
+
+    CHECK_IO();
+    CHECK_INPUTDATA("[this is a body]");
+}
+
+TEST(module_www, server_bodyCompress)
+{
+    Spectacle spectacle;
+    spectacle._peer->send("GET uri HTTP/1.1\r\nTransfer-Encoding: compress\r\n\r\n"
+                          //echo -n "[this is a body]" | compress -c | hexdump -v -e '"\\" "x" 1/1 "%02X"'
+                          "\x1F\x9D\x90\x5B\xE8\xA0\x49\x33\x07\x04\x41\x10\x61\x40\x88\x79\x43\x26\x4F\x17");
+    spectacle.play();
+    spectacle._peer->close();
+    spectacle.play();
+
+    CHECK_IO();
+    CHECK_INPUTDATA("[this is a body]");
 }

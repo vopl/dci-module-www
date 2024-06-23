@@ -26,7 +26,14 @@ namespace dci::module::www::io
         void setSupport(Support* support) requires (serverMode);
 
     public:
+        void fireFailed(primitives::ExceptionPtr);
+        void fireClosed(bool andReset = true);
+
+    public:
         InputProcessResult process(bytes::Alter& data) = delete;
+
+    public:
+        bool _emitDataDoneOnClose{};
     };
 }
 

@@ -11,22 +11,61 @@
 
 namespace dci::module::www::http::inputSlicer
 {
-    struct SourceAdapter
+    class SourceAdapter
     {
-        bytes::Alter& _data;
-        std::string_view _segment;
-        std::size_t _dropped{};
-
+    public:
         SourceAdapter(bytes::Alter& data);
-        ~SourceAdapter();
 
-        const char* segmentBegin() const;
-        const char* segmentEnd() const;
-        std::size_t segmentSize() const;
+        class Null;
+        class ForHdr;
+        class ForBody;
 
         bool empty() const;
-        char front();
 
-        void dropFront(std::size_t amount);
+        Null& null();
+        ForHdr& forHdr();
+        ForBody& forBody();
+
+    public:
+        class Null
+        {
+        };
+
+        class ForHdr
+        {
+        public:
+            ForHdr(bytes::Alter& data);
+            ~ForHdr();
+
+            const char* segmentBegin() const;
+            const char* segmentEnd() const;
+            std::size_t segmentSize() const;
+
+            bool empty() const;
+            char front();
+
+            void dropFront(std::size_t amount);
+
+        private:
+            bytes::Alter&       _data;
+            std::string_view    _segment;
+            std::size_t         _dropped{};
+        };
+
+        class ForBody
+        {
+        public:
+            ForBody(bytes::Alter& data);
+
+            bool empty() const;
+            Bytes detach(uint32 maxSize = ~uint32{});
+
+        private:
+            bytes::Alter& _data;
+        };
+
+    private:
+        bytes::Alter&                   _data;
+        Variant<Null, ForHdr, ForBody>  _var;
     };
 }

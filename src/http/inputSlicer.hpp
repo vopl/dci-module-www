@@ -26,17 +26,11 @@ namespace dci::module::www::http
         void reset();
         inputSlicer::Result process(inputSlicer::SourceAdapter& sa);
 
-        bool hasDetacheableHeadersAccumuled() const;
-        primitives::List<api::http::Header> detachHeadersAccumuled();
-
-        bool hasDetacheableBodyAccumuled() const;
-        Bytes detachBodyAccumuled();
-
     protected:
         inputSlicer::Result sliceStart();
-        inputSlicer::Result sliceDone(inputSlicer::state::RequestFirstLine& firstLine);
-        inputSlicer::Result sliceDone(inputSlicer::state::Headers& headers);
-        inputSlicer::Result sliceDone(inputSlicer::state::Body& body);
+        inputSlicer::Result sliceFlush(inputSlicer::state::RequestFirstLine& firstLine);
+        inputSlicer::Result sliceFlush(inputSlicer::state::Headers& headers, bool done);
+        inputSlicer::Result sliceFlush(inputSlicer::state::Body& body, bool done);
 
     private:
         using Processor = inputSlicer::Result (InputSlicer::*)(inputSlicer::SourceAdapter& sa);
@@ -54,15 +48,17 @@ namespace dci::module::www::http
         inputSlicer::Result responseFirstLineStatusCode(inputSlicer::SourceAdapter& sa) requires (inputSlicer::Mode::response == mode);
         inputSlicer::Result responseFirstLineStatusText(inputSlicer::SourceAdapter& sa) requires (inputSlicer::Mode::response == mode);
 
-        inputSlicer::Result firstLineCR(inputSlicer::SourceAdapter& sa);
+        inputSlicer::Result firstLineLF(inputSlicer::SourceAdapter& sa);
 
         inputSlicer::Result headerPreKey(inputSlicer::SourceAdapter& sa);
         inputSlicer::Result headerKey(inputSlicer::SourceAdapter& sa);
         inputSlicer::Result headerPreValue(inputSlicer::SourceAdapter& sa);
         inputSlicer::Result headerValue(inputSlicer::SourceAdapter& sa);
-        inputSlicer::Result headerCR(inputSlicer::SourceAdapter& sa);
+        inputSlicer::Result headerLF(inputSlicer::SourceAdapter& sa);
 
-        inputSlicer::Result body(inputSlicer::SourceAdapter& sa);
+        inputSlicer::Result bodyUntilClose(inputSlicer::SourceAdapter& sa);
+        inputSlicer::Result bodyByContentLength(inputSlicer::SourceAdapter& sa);
+        inputSlicer::Result bodyChunked(inputSlicer::SourceAdapter& sa);
 
     private:
         Processor _procesor;
@@ -75,7 +71,9 @@ namespace dci::module::www::http
             responseNull,
             responseFirstLine,
             headers,
-            body,
+            bodyUntilClose,
+            bodyByContentLength,
+            bodyChunked
         } _activeState;
 
         union
@@ -85,7 +83,9 @@ namespace dci::module::www::http
             inputSlicer::state::ResponseNull        _responseNull;
             inputSlicer::state::ResponseFirstLine   _responseFirstLine;
             inputSlicer::state::Headers             _headers;
-            inputSlicer::state::Body                _body;
+            inputSlicer::state::BodyUntilClose      _bodyUntilClose;
+            inputSlicer::state::BodyByContentLength _bodyByContentLength;
+            inputSlicer::state::BodyChunked         _bodyChunked;
         };
 
         template <class S, bool optimistic = true>

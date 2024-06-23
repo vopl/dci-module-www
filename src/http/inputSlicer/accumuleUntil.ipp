@@ -16,10 +16,11 @@ namespace dci::module::www::http::inputSlicer
     template <char terminator, Result tooBig, class Accumuler>
     Result accumuleUntil(SourceAdapter& source, Accumuler& accumuler)
     {
-        while(!source.empty())
+        SourceAdapter::ForHdr& sourceForHdr = source.forHdr();
+        while(!sourceForHdr.empty())
         {
-            std::size_t availSize = std::min(source.segmentSize(), Accumuler::_limit - accumuler.size() + 1);
-            auto availBegin = source.segmentBegin();
+            std::size_t availSize = std::min(sourceForHdr.segmentSize(), Accumuler::_limit - accumuler.size() + 1);
+            auto availBegin = sourceForHdr.segmentBegin();
             auto availEnd = availBegin+availSize;
             auto foundIter = std::find(availBegin, availEnd, terminator);
 
@@ -31,10 +32,10 @@ namespace dci::module::www::http::inputSlicer
             accumuler.append(availBegin, foundIter);
 
             if(availEnd == foundIter)
-                source.dropFront(size4Accumule);
+                sourceForHdr.dropFront(size4Accumule);
             else
             {
-                source.dropFront(size4Accumule+1);
+                sourceForHdr.dropFront(size4Accumule+1);
                 return Result::done;
             }
         }

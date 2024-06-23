@@ -6,21 +6,14 @@
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
 #pragma once
-#include <dci/host/module/entry.hpp>
-#include <dci/cmt.hpp>
-#include <dci/exception.hpp>
-#include <dci/poll/timeout.hpp>
-#include <dci/utils/atScopeExit.hpp>
-#include <dci/utils/overloaded.hpp>
-#include <dci/utils/compiler.hpp>
 
-#include <bit>
-#include <deque>
-#include <string_view>
-#include "www.hpp"
+#include "pch.hpp"
 
-namespace dci::module::www
+namespace dci::module::www::http::inputSlicer::decompressor
 {
-    namespace api = dci::idl::www;
+    class Gzip
+    {
+    public:
+        Bytes exec(Bytes&& content, bool flush);
+    };
 }
-

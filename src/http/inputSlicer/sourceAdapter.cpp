@@ -13,37 +13,78 @@ namespace dci::module::www::http::inputSlicer
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
     SourceAdapter::SourceAdapter(bytes::Alter& data)
         : _data{data}
+    {
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    bool SourceAdapter::empty() const
+    {
+        return _var.visit(utils::overloaded
+                          {
+                              [this](const Null&){return _data.atEnd();},
+                              [](const ForHdr& forHdr){return forHdr.empty();},
+                              [](const ForBody& forBody){return forBody.empty();},
+                          });
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    SourceAdapter::Null& SourceAdapter::null()
+    {
+        return _var.sget<Null>();
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    SourceAdapter::ForHdr& SourceAdapter::forHdr()
+    {
+        if(_var.holds<ForHdr>())
+            return _var.get<ForHdr>();
+
+        return _var.emplace<ForHdr>(_data);
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    SourceAdapter::ForBody& SourceAdapter::forBody()
+    {
+        if(_var.holds<ForBody>())
+            return _var.get<ForBody>();
+
+        return _var.emplace<ForBody>(_data);
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    SourceAdapter::ForHdr::ForHdr(bytes::Alter& data)
+        : _data{data}
         , _segment{reinterpret_cast<const char*>(_data.continuousData()), _data.continuousDataSize()}
     {
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    SourceAdapter::~SourceAdapter()
+    SourceAdapter::ForHdr::~ForHdr()
     {
         if(_dropped)
             _data.remove(_dropped);
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    const char* SourceAdapter::segmentBegin() const
+    const char* SourceAdapter::ForHdr::segmentBegin() const
     {
         return _segment.data();
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    const char* SourceAdapter::segmentEnd() const
+    const char* SourceAdapter::ForHdr::segmentEnd() const
     {
         return _segment.data() + _segment.size();
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    std::size_t SourceAdapter::segmentSize() const
+    std::size_t SourceAdapter::ForHdr::segmentSize() const
     {
         return segmentEnd() - segmentBegin();
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    void SourceAdapter::dropFront(std::size_t amount)
+    void SourceAdapter::ForHdr::dropFront(std::size_t amount)
     {
         if(_segment.size() > amount)
         {
@@ -59,15 +100,36 @@ namespace dci::module::www::http::inputSlicer
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    bool SourceAdapter::empty() const
+    bool SourceAdapter::ForHdr::empty() const
     {
         return segmentEnd() == segmentBegin();
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    char SourceAdapter::front()
+    char SourceAdapter::ForHdr::front()
     {
         dbgAssert(!empty());
         return *segmentBegin();
     }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    SourceAdapter::ForBody::ForBody(bytes::Alter& data)
+        : _data{data}
+    {
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    bool SourceAdapter::ForBody::empty() const
+    {
+        return _data.atEnd();
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    Bytes SourceAdapter::ForBody::detach(uint32 maxSize)
+    {
+        Bytes res;
+        _data.removeTo(res, maxSize);
+        return res;
+    }
+
 }
