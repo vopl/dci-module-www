@@ -8,12 +8,27 @@
 #pragma once
 
 #include "pch.hpp"
+#include "direction.hpp"
+#include <zstd.h>
 
-namespace dci::module::www::http::inputSlicer::decompressor
+namespace dci::module::www::http::compress
 {
-    class Deflate
+    template <Direction direction>
+    class Zstd
     {
     public:
-        Bytes exec(Bytes&& content, bool flush);
+        ~Zstd();
+
+        bool initialize();
+        std::optional<Bytes> exec(Bytes&& content, bool finish);
+
+    private:
+        using Ctx = utils::ct::If<
+            Direction::compress == direction,
+            ZSTD_CCtx,
+            ZSTD_DCtx
+        >*;
+
+        Ctx _ctx{};
     };
 }

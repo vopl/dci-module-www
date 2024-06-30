@@ -5,15 +5,20 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#pragma once
-
 #include "pch.hpp"
+#include "none.hpp"
 
-namespace dci::module::www::http::inputSlicer::decompressor
+namespace dci::module::www::http::compress
 {
-    class None
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    bool None::initialize()
     {
-    public:
-        Bytes exec(Bytes&& content, bool flush);
-    };
+        return true;
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    std::optional<Bytes> None::exec(Bytes&& content, bool /*finish*/)
+    {
+        return std::move(content);
+    }
 }

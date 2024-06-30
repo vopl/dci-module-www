@@ -45,15 +45,20 @@ namespace dci::module::www::http::inputSlicer::state
         }
 
         return std::exchange(_tail, {});
-
     }
 
     /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Bytes Body::decompress(Bytes&& content, bool flush)
+    bool Body::needDecompress()
+    {
+        return !_decompressor.holds<compress::None>();
+    }
+
+    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+    std::optional<Bytes> Body::decompress(Bytes&& content, bool finish)
     {
         return _decompressor.visit([&](auto& concrete)
         {
-            return concrete.exec(std::move(content), flush);
+            return concrete.exec(std::move(content), finish);
         });
     }
 }

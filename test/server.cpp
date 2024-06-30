@@ -19,6 +19,7 @@ using namespace dci::cmt;
 using namespace dci::idl;
 using namespace dci::primitives;
 
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 namespace testing::internal
 {
     template <>
@@ -28,6 +29,7 @@ namespace testing::internal
     }
 }
 
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 struct Spectacle
 {
     struct Failed           : Tuple<std::string>                               { using Tuple::Tuple; };
@@ -233,6 +235,7 @@ struct Spectacle
     }
 };
 
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 #define CHECK_IO()                                      \
     ASSERT_GT(spectacle._actions.size(), 1);            \
     ASSERT_EQ(spectacle._actions[0], Spectacle::Io{});
@@ -388,6 +391,7 @@ TEST(module_www, server_badHeaderValue)
     }
 }
 
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 TEST(module_www, server_bodyUntilClose)
 {
     Spectacle spectacle;
@@ -400,6 +404,7 @@ TEST(module_www, server_bodyUntilClose)
     CHECK_INPUTDATA("[this is a body]");
 }
 
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 TEST(module_www, server_bodyUntilClose2)
 {
     Spectacle spectacle;
@@ -412,6 +417,7 @@ TEST(module_www, server_bodyUntilClose2)
     CHECK_INPUTDATA("[this is a body]");
 }
 
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 TEST(module_www, server_bodyByLength)
 {
     Spectacle spectacle;
@@ -424,6 +430,7 @@ TEST(module_www, server_bodyByLength)
     CHECK_INPUTDATA("[this is a body]");
 }
 
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 TEST(module_www, server_bodyChunked)
 {
     Spectacle spectacle;
@@ -436,6 +443,7 @@ TEST(module_www, server_bodyChunked)
     CHECK_INPUTDATA("[this is a body]");
 }
 
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 TEST(module_www, server_bodyChunked2)
 {
     Spectacle spectacle;
@@ -453,16 +461,227 @@ TEST(module_www, server_bodyChunked2)
     CHECK_INPUTDATA("[this is a body]");
 }
 
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+// echo -n "[this is a body]" | compress -c | hexdump -v -e '"\\" "x" 1/1 "%02X"'
+// \x1F\x9D\x90\x5B\xE8\xA0\x49\x33\x07\x04\x41\x10\x61\x40\x88\x79\x43\x26\x4F\x17
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
 TEST(module_www, server_bodyCompress)
 {
+    // Content-Encoding: compress
+    // не поддерживаем сразу
+
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nTransfer-Encoding: compress\r\n\r\n"
+                "\x1F\x9D\x90\x5B\xE8\xA0\x49\x33\x07\x04\x41\x10\x61\x40\x88\x79\x43\x26\x4F\x17", request::UnprocessableContent, "HTTP/1.1 422 Unprocessable Content\r\nConnection: close\r\n\r\n");
+
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nContent-Encoding: compress\r\n\r\n", request::UnprocessableContent, "HTTP/1.1 422 Unprocessable Content\r\nConnection: close\r\n\r\n");
+}
+
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+// echo -n "[this is a body]" | perl -MIO::Compress::RawDeflate -e 'undef $/; my ($in, $out) = (<>, undef); IO::Compress::RawDeflate::rawdeflate(\$in, \$out); print $out;' | hexdump -v -e '"\\" "x" 1/1 "%02X"'
+// \x8B\x2E\xC9\xC8\x2C\x56\x00\xA2\x44\x85\xA4\xFC\x94\xCA\x58\x00
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_bodyDeflate)
+{
     Spectacle spectacle;
-    spectacle._peer->send("GET uri HTTP/1.1\r\nTransfer-Encoding: compress\r\n\r\n"
-                          //echo -n "[this is a body]" | compress -c | hexdump -v -e '"\\" "x" 1/1 "%02X"'
-                          "\x1F\x9D\x90\x5B\xE8\xA0\x49\x33\x07\x04\x41\x10\x61\x40\x88\x79\x43\x26\x4F\x17");
+    spectacle._peer->send("GET uri HTTP/1.1\r\nTransfer-Encoding: deflate\r\n\r\n"
+                          "\x8B\x2E\xC9\xC8\x2C\x56\x00\xA2\x44\x85\xA4\xFC\x94\xCA\x58\x00");
     spectacle.play();
     spectacle._peer->close();
     spectacle.play();
 
     CHECK_IO();
     CHECK_INPUTDATA("[this is a body]");
+}
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_bodyDeflate2)
+{
+    Spectacle spectacle;
+    spectacle._peer->send("GET uri HTTP/1.1\r\nContent-Encoding: deflate\r\n\r\n"
+                          "\x8B\x2E\xC9\xC8\x2C\x56\x00\xA2\x44\x85\xA4\xFC\x94\xCA\x58\x00");
+    spectacle.play();
+    spectacle._peer->close();
+    spectacle.play();
+
+    CHECK_IO();
+    CHECK_INPUTDATA("[this is a body]");
+}
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_bodyDeflate3)
+{
+    LOGD("the following log lines are caused by a test, these are not errors");
+
+    // extra
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nContent-Encoding: deflate\r\n\r\n"
+                "\x8B\x2E\xC9\xC8\x2C\x56\x00\xA2\x44\x85\xA4\xFC\x94\xCA\x58\x00 abrakadabra shwabra", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+
+    // bad after middle
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nContent-Encoding: deflate\r\n\r\n"
+                "\x8B\x2E\xC9\xC8\x2C\x56 abrakadabra shwabra", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+
+    // bad
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nContent-Encoding: deflate\r\n\r\n"
+                "abrakadabra shwabra", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+
+    LOGD("the end of the noisy test");
+}
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+// echo -n "[this is a body]" | gzip -c - | hexdump -v -e '"\\" "x" 1/1 "%02X"'
+// \x1F\x8B\x08\x00\x00\x00\x00\x00\x00\x03\x8B\x2E\xC9\xC8\x2C\x56\x00\xA2\x44\x85\xA4\xFC\x94\xCA\x58\x00\xD0\x35\x3A\x02\x10\x00\x00\x00
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_bodyGzip)
+{
+    Spectacle spectacle;
+    spectacle._peer->send("GET uri HTTP/1.1\r\nTransfer-Encoding: gzip\r\n\r\n"
+                          "\x1F\x8B\x08\x00\x00\x00\x00\x00\x00\x03\x8B\x2E\xC9\xC8\x2C\x56\x00\xA2\x44\x85\xA4\xFC\x94\xCA\x58\x00\xD0\x35\x3A\x02\x10\x00\x00\x00");
+    spectacle.play();
+    spectacle._peer->close();
+    spectacle.play();
+
+    CHECK_IO();
+    CHECK_INPUTDATA("[this is a body]");
+}
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_bodyGzip2)
+{
+    Spectacle spectacle;
+    spectacle._peer->send("GET uri HTTP/1.1\r\nContent-Encoding: gzip\r\n\r\n"
+                          "\x1F\x8B\x08\x00\x00\x00\x00\x00\x00\x03\x8B\x2E\xC9\xC8\x2C\x56\x00\xA2\x44\x85\xA4\xFC\x94\xCA\x58\x00\xD0\x35\x3A\x02\x10\x00\x00\x00");
+    spectacle.play();
+    spectacle._peer->close();
+    spectacle.play();
+
+    CHECK_IO();
+    CHECK_INPUTDATA("[this is a body]");
+}
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_bodyGzip3)
+{
+    LOGD("the following log lines are caused by a test, these are not errors");
+
+    // extra
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nContent-Encoding: gzip\r\n\r\n"
+                "\x1F\x8B\x08\x00\x00\x00\x00\x00\x00\x03\x8B\x2E\xC9\xC8\x2C\x56\x00\xA2\x44\x85\xA4\xFC\x94\xCA\x58\x00\xD0\x35\x3A\x02\x10\x00\x00\x00 abrakadabra shwabra", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+
+    // bad after middle
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nContent-Encoding: gzip\r\n\r\n"
+                "\x1F\x8B\x08\x00\x00\x00\x00\x00\x00\x03\x8B\x2E\xC9\xC8\x2C\x56\x00\xA2\x44\x85 abrakadabra shwabra", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+
+    // bad
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nContent-Encoding: gzip\r\n\r\n"
+                "abrakadabra shwabra", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+
+    LOGD("the end of the noisy test");
+}
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+// echo -n "[this is a body]" | zstd -c - | hexdump -v -e '"\\" "x" 1/1 "%02X"'
+// \x28\xB5\x2F\xFD\x04\x58\x81\x00\x00\x5B\x74\x68\x69\x73\x20\x69\x73\x20\x61\x20\x62\x6F\x64\x79\x5D\xBB\xDF\xC6\x39
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_bodyZstd)
+{
+    Spectacle spectacle;
+    spectacle._peer->send("GET uri HTTP/1.1\r\nTransfer-Encoding: zstd\r\n\r\n"
+                          "\x28\xB5\x2F\xFD\x04\x58\x81\x00\x00\x5B\x74\x68\x69\x73\x20\x69\x73\x20\x61\x20\x62\x6F\x64\x79\x5D\xBB\xDF\xC6\x39");
+    spectacle.play();
+    spectacle._peer->close();
+    spectacle.play();
+
+    CHECK_IO();
+    CHECK_INPUTDATA("[this is a body]");
+}
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_bodyZstd2)
+{
+    Spectacle spectacle;
+    spectacle._peer->send("GET uri HTTP/1.1\r\nContent-Encoding: zstd\r\n\r\n"
+                          "\x28\xB5\x2F\xFD\x04\x58\x81\x00\x00\x5B\x74\x68\x69\x73\x20\x69\x73\x20\x61\x20\x62\x6F\x64\x79\x5D\xBB\xDF\xC6\x39");
+    spectacle.play();
+    spectacle._peer->close();
+    spectacle.play();
+
+    CHECK_IO();
+    CHECK_INPUTDATA("[this is a body]");
+}
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_bodyZstd3)
+{
+    LOGD("the following log lines are caused by a test, these are not errors");
+
+    // extra
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nContent-Encoding: zstd\r\n\r\n"
+                "\x28\xB5\x2F\xFD\x04\x58\x81\x00\x00\x5B\x74\x68\x69\x73\x20\x69\x73\x20\x61\x20\x62\x6F\x64\x79\x5D\xBB\xDF\xC6\x39 abrakadabra shwabra", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+
+    // bad after middle
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nContent-Encoding: zstd\r\n\r\n"
+                "\x28\xB5\x2F\xFD\x04\x58\x81\x00\x00\x5B\x74\x68\x69\x73\x20 abrakadabra shwabra", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+
+    // bad
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nContent-Encoding: zstd\r\n\r\n"
+                "abrakadabra shwabra", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+
+    LOGD("the end of the noisy test");
+}
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+// echo -n "[this is a body]" | brotli -c - | hexdump -v -e '"\\" "x" 1/1 "%02X"'
+// \x1F\x0F\x00\xF8\xA5\xB6\xBA\x52\x10\x45\x1A\x29\x17\x66\xDA\x29\x52
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_bodyBrotli)
+{
+    Spectacle spectacle;
+    spectacle._peer->send("GET uri HTTP/1.1\r\nTransfer-Encoding: br\r\n\r\n"
+                          "\x1F\x0F\x00\xF8\xA5\xB6\xBA\x52\x10\x45\x1A\x29\x17\x66\xDA\x29\x52");
+    spectacle.play();
+    spectacle._peer->close();
+    spectacle.play();
+
+    CHECK_IO();
+    CHECK_INPUTDATA("[this is a body]");
+}
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_bodyBrotli2)
+{
+    Spectacle spectacle;
+    spectacle._peer->send("GET uri HTTP/1.1\r\nContent-Encoding: br\r\n\r\n"
+                          "\x1F\x0F\x00\xF8\xA5\xB6\xBA\x52\x10\x45\x1A\x29\x17\x66\xDA\x29\x52");
+    spectacle.play();
+    spectacle._peer->close();
+    spectacle.play();
+
+    CHECK_IO();
+    CHECK_INPUTDATA("[this is a body]");
+}
+
+/////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
+TEST(module_www, server_bodyBrotli3)
+{
+    LOGD("the following log lines are caused by a test, these are not errors");
+
+    // extra
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nContent-Encoding: br\r\n\r\n"
+                "\x1F\x0F\x00\xF8\xA5\xB6\xBA\x52\x10\x45\x1A\x29\x17\x66\xDA\x29\x52 abrakadabra shwabra", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+
+    // bad after middle
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nContent-Encoding: br\r\n\r\n"
+                "\x1F\x0F\x00\xF8\xA5\xB6\xBA\x52 abrakadabra shwabra", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+
+    // bad
+    PLAY_2_FAIL("GET uri HTTP/1.1\r\nContent-Encoding: br\r\n\r\n"
+                "abrakadabra shwabra", request::BadRequest, "HTTP/1.1 400 Bad Request\r\nConnection: close\r\n\r\n");
+
+    LOGD("the end of the noisy test");
 }

@@ -9,12 +9,10 @@
 
 #include "pch.hpp"
 #include "accumuler.hpp"
-#include "decompressor/none.hpp"
-#include "decompressor/compress.hpp"
-#include "decompressor/deflate.hpp"
-#include "decompressor/gzip.hpp"
-#include "decompressor/br.hpp"
-#include "decompressor/zstd.hpp"
+#include "../compress/none.hpp"
+#include "../compress/zlib.hpp"
+#include "../compress/br.hpp"
+#include "../compress/zstd.hpp"
 
 namespace dci::module::www::http::inputSlicer::state
 {
@@ -94,7 +92,6 @@ namespace dci::module::www::http::inputSlicer::state
             enum class Compression
             {
                 none,
-                compress,
                 deflate,
                 gzip,
                 br,
@@ -112,16 +109,16 @@ namespace dci::module::www::http::inputSlicer::state
     {
         using Decompressor = Variant
         <
-            decompressor::None,
-            decompressor::Compress,
-            decompressor::Deflate,
-            decompressor::Gzip,
-            decompressor::Br,
-            decompressor::Zstd
+            compress::None,
+            compress::Zlib<compress::zlib::Type::deflate, compress::Direction::decompress>,
+            compress::Zlib<compress::zlib::Type::gzip, compress::Direction::decompress>,
+            compress::Br<compress::Direction::decompress>,
+            compress::Zstd<compress::Direction::decompress>
         >;
         Decompressor _decompressor;
 
-        Bytes decompress(Bytes&& content, bool flush);
+        bool needDecompress();
+        std::optional<Bytes> decompress(Bytes&& content, bool finish);
 
         Bytes _content;
         Set<String> _trailers;

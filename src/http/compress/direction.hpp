@@ -5,15 +5,13 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include "pch.hpp"
-#include "zstd.hpp"
+#pragma once
 
-namespace dci::module::www::http::inputSlicer::decompressor
+namespace dci::module::www::http::compress
 {
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Bytes Zstd::exec(Bytes&& content, bool /*flush*/)
+    enum class Direction
     {
-        dbgFatal("not impl");
-        return std::move(content);
-    }
+        compress,
+        decompress
+    };
 }

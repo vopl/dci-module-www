@@ -5,15 +5,34 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include "pch.hpp"
-#include "deflate.hpp"
+#pragma once
 
-namespace dci::module::www::http::inputSlicer::decompressor
+#include "pch.hpp"
+#include "direction.hpp"
+
+namespace dci::module::www::http::compress
 {
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Bytes Deflate::exec(Bytes&& content, bool /*flush*/)
+    namespace zlib
     {
-        dbgFatal("not impl");
-        return std::move(content);
+        enum class Type
+        {
+            deflate,
+            gzip,
+        };
     }
+
+    template <zlib::Type type, Direction direction>
+    class Zlib
+    {
+    public:
+        ~Zlib();
+
+        bool initialize();
+        std::optional<Bytes> exec(Bytes&& content, bool finish);
+
+    private:
+        z_stream _strm{};
+        bool _initialized{};
+        bool _dstFinished{};
+    };
 }

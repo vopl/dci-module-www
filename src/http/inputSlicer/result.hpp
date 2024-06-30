@@ -16,14 +16,17 @@ namespace dci::module::www::http::inputSlicer
     {
         needMore,
 
+        internalError, //500 Internal Server Error
+
         badEntity,  //400 Bad Request
         badMethod,  //405 Method Not Allowed
         badVersion, //505 HTTP Version Not Supported
         badStatus,
 
-        tooBigContent,  //413 Content Too Large
-        tooBigUri,      //414 URI Too Long
-        tooBigHeaders,  //431 Request Header Fields Too Large
+        tooBigContent,          //413 Content Too Large
+        tooBigUri,              //414 URI Too Long
+        tooBigHeaders,          //431 Request Header Fields Too Large
+        unprocessableContent,   //422 Unprocessable Content
 
         done,
     };

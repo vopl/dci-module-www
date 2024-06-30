@@ -33,5 +33,4 @@ namespace dci::module::www::http::server
         io::Plexus<Request, Response, true>::emplace(response.init2());
         methods()->io(std::move(request), std::move(response));
     }
-
 }

@@ -14,6 +14,8 @@
 #include <dci/utils/overloaded.hpp>
 #include <dci/utils/compiler.hpp>
 
+#include <zlib.h>
+
 #include <bit>
 #include <deque>
 #include <string_view>

@@ -128,6 +128,9 @@ namespace dci::module::www::http::server
         case inputSlicer::Result::tooBigHeaders:
             _buffer = "HTTP/1.1 431 Request Header Fields Too Large\r\nConnection: close\r\n\r\n";
             break;
+        case inputSlicer::Result::unprocessableContent:
+            _buffer = "HTTP/1.1 422 Unprocessable Content\r\nConnection: close\r\n\r\n";
+            break;
         }
 
         flushBuffer();

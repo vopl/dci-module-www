@@ -508,6 +508,27 @@ namespace dci::module::www::http
                         }
                     };
 
+                    auto setCompression = [&](std::string_view type) -> bool
+                    {
+                        if(inputSlicer::state::Headers::BodyRelated::Compression::none != stateHeaders._bodyRelated._compression)
+                            return false;
+
+                        if("compress"sv == type)
+                            return false;
+                        else if("deflate"sv == type)
+                            stateHeaders._bodyRelated._compression = inputSlicer::state::Headers::BodyRelated::Compression::deflate;
+                        else if("gzip"sv == type)
+                            stateHeaders._bodyRelated._compression = inputSlicer::state::Headers::BodyRelated::Compression::gzip;
+                        else if("br"sv == type)
+                            stateHeaders._bodyRelated._compression = inputSlicer::state::Headers::BodyRelated::Compression::br;
+                        else if("zstd"sv == type)
+                            stateHeaders._bodyRelated._compression = inputSlicer::state::Headers::BodyRelated::Compression::zstd;
+                        else
+                            return false;
+
+                        return true;
+                    };
+
                     switch(*keyRecognized)
                     {
                     case api::http::header::KeyRecognized::Content_Length:
@@ -535,30 +556,11 @@ namespace dci::module::www::http
                             bool someBadValue = false;
                             split(stateHeaders._current._value._downstream, ", "sv, [&](std::string_view part)
                             {
-                                auto setCompression = [&](inputSlicer::state::Headers::BodyRelated::Compression v)
-                                {
-                                    if(inputSlicer::state::Headers::BodyRelated::Compression::none == stateHeaders._bodyRelated._compression)
-                                        stateHeaders._bodyRelated._compression = v;
-                                    else
-                                        someBadValue = true;
-                                };
-
-                                if("compress"sv == part)
-                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::compress);
-                                else if("deflate"sv == part)
-                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::deflate);
-                                else if("gzip"sv == part)
-                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::gzip);
-                                else if("br"sv == part)
-                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::br);
-                                else if("zstd"sv == part)
-                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::zstd);
-                                else
-                                    someBadValue = true;
+                                someBadValue |= !setCompression(part);
                             });
 
                             if(someBadValue)
-                                return inputSlicer::Result::badEntity;
+                                return inputSlicer::Result::unprocessableContent;
                         }
                         break;
                     case api::http::header::KeyRecognized::Transfer_Encoding:
@@ -567,14 +569,6 @@ namespace dci::module::www::http
                             bool someBadValue = false;
                             split(stateHeaders._current._value._downstream, ", "sv, [&](std::string_view part)
                             {
-                                auto setCompression = [&](inputSlicer::state::Headers::BodyRelated::Compression v)
-                                {
-                                    if(inputSlicer::state::Headers::BodyRelated::Compression::none == stateHeaders._bodyRelated._compression)
-                                        stateHeaders._bodyRelated._compression = v;
-                                    else
-                                        someBadValue = true;
-                                };
-
                                 if("chunked"sv == part)
                                 {
                                     if( inputSlicer::state::Headers::BodyRelated::Portionality::null == stateHeaders._bodyRelated._portionality ||
@@ -585,22 +579,12 @@ namespace dci::module::www::http
                                     else
                                         someBadValue = true;
                                 }
-                                else if("compress"sv == part)
-                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::compress);
-                                else if("deflate"sv == part)
-                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::deflate);
-                                else if("gzip"sv == part)
-                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::gzip);
-                                else if("br"sv == part)
-                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::br);
-                                else if("zstd"sv == part)
-                                    setCompression(inputSlicer::state::Headers::BodyRelated::Compression::zstd);
                                 else
-                                    someBadValue = true;
+                                    someBadValue |= !setCompression(part);
                             });
 
                             if(someBadValue)
-                                return inputSlicer::Result::badEntity;
+                                return inputSlicer::Result::unprocessableContent;
                         }
                         break;
                     case api::http::header::KeyRecognized::Connection:
@@ -684,24 +668,17 @@ namespace dci::module::www::http
                     switch(compression)
                     {
                     case inputSlicer::state::Headers::BodyRelated::Compression::none:
-                        stateBody._decompressor.emplace<inputSlicer::decompressor::None>();
-                        break;
-                    case inputSlicer::state::Headers::BodyRelated::Compression::compress:
-                        stateBody._decompressor.emplace<inputSlicer::decompressor::Compress>();
-                        break;
+                        return stateBody._decompressor.emplace<compress::None>().initialize();
                     case inputSlicer::state::Headers::BodyRelated::Compression::deflate:
-                        stateBody._decompressor.emplace<inputSlicer::decompressor::Deflate>();
-                        break;
+                        return stateBody._decompressor.emplace<compress::Zlib<compress::zlib::Type::deflate, compress::Direction::decompress>>().initialize();
                     case inputSlicer::state::Headers::BodyRelated::Compression::gzip:
-                        stateBody._decompressor.emplace<inputSlicer::decompressor::Gzip>();
-                        break;
+                        return stateBody._decompressor.emplace<compress::Zlib<compress::zlib::Type::gzip, compress::Direction::decompress>>().initialize();
                     case inputSlicer::state::Headers::BodyRelated::Compression::br:
-                        stateBody._decompressor.emplace<inputSlicer::decompressor::Br>();
-                        break;
+                        return stateBody._decompressor.emplace<compress::Br<compress::Direction::decompress>>().initialize();
                     case inputSlicer::state::Headers::BodyRelated::Compression::zstd:
-                        stateBody._decompressor.emplace<inputSlicer::decompressor::Zstd>();
-                        break;
+                        return stateBody._decompressor.emplace<compress::Zstd<compress::Direction::decompress>>().initialize();
                     }
+                    return false;
                 };
 
                 switch(stateHeaders._bodyRelated._portionality)
@@ -711,7 +688,8 @@ namespace dci::module::www::http
                     {
                         static_cast<Derived*>(this)->_emitDataDoneOnClose = true;
 
-                        bodySetup(state<inputSlicer::state::BodyUntilClose, false>());
+                        if(!bodySetup(state<inputSlicer::state::BodyUntilClose, false>()))
+                            return inputSlicer::Result::internalError;
                         _procesor = &InputSlicer::bodyUntilClose;
                         return bodyUntilClose(sa);
                     }
@@ -720,13 +698,15 @@ namespace dci::module::www::http
                         auto contentLength = stateHeaders._bodyRelated._contentLength;
                         inputSlicer::state::BodyByContentLength& bodyState = state<inputSlicer::state::BodyByContentLength, false>();
                         bodyState._contentLength = contentLength;
-                        bodySetup(bodyState);
+                        if(!bodySetup(bodyState))
+                            return inputSlicer::Result::internalError;
                         _procesor = &InputSlicer::bodyByContentLength;
                         return bodyByContentLength(sa);
                     }
                 case inputSlicer::state::Headers::BodyRelated::Portionality::chunked:
                     {
-                        bodySetup(state<inputSlicer::state::BodyChunked, false>());
+                        if(!bodySetup(state<inputSlicer::state::BodyChunked, false>()))
+                            return inputSlicer::Result::internalError;
                         _procesor = &InputSlicer::bodyChunked;
                         return bodyChunked(sa);
                     }
@@ -749,7 +729,15 @@ namespace dci::module::www::http
     {
         inputSlicer::state::BodyUntilClose& stateBody = state<inputSlicer::state::BodyUntilClose>();
 
-        stateBody._content.end().write(stateBody.decompress(sa.forBody().detach(), true));
+        if(stateBody.needDecompress())
+        {
+            std::optional<Bytes> decompressed = stateBody.decompress(sa.forBody().detach(), false);
+            if(!decompressed)
+                return inputSlicer::Result::badEntity;
+            stateBody._content.end().write(std::move(*decompressed));
+        }
+        else
+            stateBody._content.end().write(sa.forBody().detach());
 
         if(!stateBody._content.empty())
             return static_cast<Derived*>(this)->sliceFlush(stateBody, false);
@@ -768,7 +756,15 @@ namespace dci::module::www::http
         stateBody._contentLength -= content.size();
         bool done = !stateBody._contentLength;
 
-        stateBody._content.end().write(stateBody.decompress(std::move(content), done));
+        if(stateBody.needDecompress())
+        {
+            std::optional<Bytes> decompressed = stateBody.decompress(std::move(content), done);
+            if(!decompressed)
+                return inputSlicer::Result::badEntity;
+            stateBody._content.end().write(std::move(*decompressed));
+        }
+        else
+            stateBody._content.end().write(std::move(content));
 
         if(!stateBody._content.empty() || done)
             return static_cast<Derived*>(this)->sliceFlush(stateBody, done);
@@ -785,6 +781,15 @@ namespace dci::module::www::http
         auto flush = [&](inputSlicer::Result res)
         {
             bool done = inputSlicer::Result::done == res;
+
+            if(done && stateBody.needDecompress())
+            {
+                std::optional<Bytes> decompressed = stateBody.decompress(Bytes{}, true);
+                if(!decompressed)
+                    return inputSlicer::Result::badEntity;
+                stateBody._content.end().write(std::move(*decompressed));
+            }
+
             if(!stateBody._content.empty() || done)
                 return static_cast<Derived*>(this)->sliceFlush(stateBody, done);
             return res;
@@ -851,7 +856,16 @@ namespace dci::module::www::http
                     Bytes content = sa.forBody().detach(stateBody._length);
                     dbgAssert(content.size() <= stateBody._length);
                     stateBody._length -= content.size();
-                    stateBody._content.end().write(stateBody.decompress(std::move(content), false));
+
+                    if(stateBody.needDecompress())
+                    {
+                        std::optional<Bytes> decompressed = stateBody.decompress(std::move(content), false);
+                        if(!decompressed)
+                            return inputSlicer::Result::badEntity;
+                        stateBody._content.end().write(std::move(*decompressed));
+                    }
+                    else
+                        stateBody._content.end().write(std::move(content));
 
                     if(stateBody._length)
                     {

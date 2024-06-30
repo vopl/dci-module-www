@@ -57,6 +57,10 @@ namespace dci::module::www::http::server
             }
             return io::InputProcessResult::done;
 
+        case inputSlicer::Result::internalError:
+            err4Fail = exception::buildInstance<api::http::error::request::InternalServerError>();
+            break;
+
         case inputSlicer::Result::badEntity:
             err4Fail = exception::buildInstance<api::http::error::request::BadRequest>();
             break;
@@ -79,6 +83,10 @@ namespace dci::module::www::http::server
 
         case inputSlicer::Result::tooBigHeaders:
             err4Fail = exception::buildInstance<api::http::error::request::TooBigHeaders>();
+            break;
+
+        case inputSlicer::Result::unprocessableContent:
+            err4Fail = exception::buildInstance<api::http::error::request::UnprocessableContent>();
             break;
 
         default:

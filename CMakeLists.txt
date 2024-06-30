@@ -10,6 +10,10 @@ file(GLOB_RECURSE TST test/*)
 add_library(${UNAME} MODULE ${SRC} ${IDL})
 target_include_directories(${UNAME} PRIVATE src)
 
+############################################################
+find_package(ZLIB REQUIRED)
+target_link_libraries(${UNAME} PRIVATE ZLIB::ZLIB zstd brotlienc brotlidec)
+
 ##############################################################
 include(dciIdl)
 dciIdl(${UNAME} cpp

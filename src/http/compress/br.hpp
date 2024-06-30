@@ -5,14 +5,31 @@
    of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
    You should have received a copy of the GNU Affero General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. */
 
-#include "pch.hpp"
-#include "none.hpp"
+#pragma once
 
-namespace dci::module::www::http::inputSlicer::decompressor
+#include "pch.hpp"
+#include "direction.hpp"
+#include <brotli/decode.h>
+#include <brotli/encode.h>
+
+namespace dci::module::www::http::compress
 {
-    /////////0/////////1/////////2/////////3/////////4/////////5/////////6/////////7
-    Bytes None::exec(Bytes&& content, bool /*flush*/)
+    template <Direction direction>
+    class Br
     {
-        return std::move(content);
-    }
+    public:
+        ~Br();
+
+        bool initialize();
+        std::optional<Bytes> exec(Bytes&& content, bool finish);
+
+    private:
+        using State = utils::ct::If<
+            Direction::compress == direction,
+            BrotliEncoderState,
+            BrotliDecoderState
+        >*;
+
+        State _state{};
+    };
 }

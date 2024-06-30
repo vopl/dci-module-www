@@ -13,12 +13,14 @@ scope www::http
         exception Request : Error {}
         scope request
         {
-            exception BadRequest    : Request {}
-            exception BadMethod     : Request {}
-            exception BadVersion    : Request {}
-            exception TooBigUri     : Request {}
-            exception TooBigHeaders : Request {}
-            exception TooBigContent : Request {}
+            exception InternalServerError   : Request {}
+            exception BadRequest            : Request {}
+            exception BadMethod             : Request {}
+            exception BadVersion            : Request {}
+            exception TooBigUri             : Request {}
+            exception TooBigHeaders         : Request {}
+            exception TooBigContent         : Request {}
+            exception UnprocessableContent  : Request {}
         }
 
         exception Response : Error {}
